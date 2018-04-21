@@ -940,7 +940,7 @@ getaddednodeinfo returns information about the given added node, or all added no
 getaddressesbyaccount returns a list of every address assigned to a particular account.<br />
 getbalance gets the balance in decimal bitcoins across all accounts or for a particular account.<br />
 getbestblockhash returns the header hash of the most recent block on the best block chain.<br />
-```getblock` gets a block with a particular header hash from the local block database either as a JSON object or as a serialized block.<br />
+getblock gets a block with a particular header hash from the local block database either as a JSON object or as a serialized block.<br />
 getblockchaininfo provides information about the current state of the block chain.<br />
 getblockcount returns the number of blocks in the local best block chain.<br />
 getblockhash returns the header hash of a block at the given height in the local best block chain.<br />
