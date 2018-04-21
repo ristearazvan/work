@@ -921,13 +921,13 @@ Email: Team@tokenpay.com
 JSON-RPC API Reference
 TokenPay has many new components meaning we also added extra API calls on top of the original Bitcoin API.
 
-addmultisigaddress adds a P2SH multisig address to the wallet.
-addnode attempts to add or remove a node from the addnode list, or to try a connection to a node once.
-backupwallet safely copies wallet.dat to the specified file, which can be a directory or a path with filename.
-createmultisig creates a P2SH multi-signature address.
-createrawtransaction creates an unsigned serialized transaction that spends a previous output to a new output with a P2PKH or P2SH address. The transaction is not stored in the wallet or transmitted to the network.
-decoderawtransaction decodes a serialized transaction hex string into a JSON object describing the transaction.
-decodescript decodes a hex-encoded P2SH redeem script.
+addmultisigaddress adds a P2SH multisig address to the wallet.<br />
+addnode attempts to add or remove a node from the addnode list, or to try a connection to a node once.<br />
+backupwallet safely copies wallet.dat to the specified file, which can be a directory or a path with filename.<br />
+createmultisig creates a P2SH multi-signature address.<br />
+createrawtransaction creates an unsigned serialized transaction that spends a previous output to a new output with a P2PKH or P2SH address. The transaction is not stored in the wallet or transmitted to the network.<br />
+decoderawtransaction decodes a serialized transaction hex string into a JSON object describing the transaction.<br />
+decodescript decodes a hex-encoded P2SH redeem script.<br />
 dumpprivkey returns the wallet-import-format (WIP) private key corresponding to an address. (But does not remove it from the wallet.)
 dumpwallet creates or overwrites a file with all wallet keys in a human-readable format.
 encryptwallet encrypts the wallet with a passphrase. This is only to enable encryption for the first time. After encryption is enabled, you will need to enter the passphrase to use private keys.
