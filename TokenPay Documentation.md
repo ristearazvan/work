@@ -245,7 +245,7 @@ Specification | Value
 --- | ---
 Algo | Scrypt
 Max Height | 31000 (after this network will not accept PoW blocks)
-TPAY Circulation |  ~6,400,000 TPAY
+TPAY Circulation |  ~25,000,000 TPAY
 Length | two weeks of PoW
 
 ### Proof of Stake (PoS) - Ongoing
