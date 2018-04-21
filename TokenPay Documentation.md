@@ -1015,265 +1015,261 @@ estimateanonfee
 estimateanonfee <amount> <ring_size> [narration]
 is a real and is rounded to the nearest 0.000001 Used to estimate the anon fee with a given amount and ring size.
 
-getnewpubkey
-getnewpubkey [account]
-getnewstealthaddress
-getnewstealthaddress [label]
-getstakinginfo
-getsubsidy
-getsubsidy [nTarget]
-getwork
-getwork [data]
-getworkex
-getworkex [data, coinbase]
-help
-help [command]
-importstealthaddress
-importstealthaddress <scan_secret> <spend_secret> [label]
-liststealthaddresses
-liststealthaddresses [show_secrets=0]
-List owned stealth addresses.
+getnewpubkey<br />
+getnewpubkey [account]<br />
+getnewstealthaddress<br />
+getnewstealthaddress [label]<br />
+getstakinginfo<br />
+getsubsidy<br />
+getsubsidy [nTarget]<br />
+getwork<br />
+getwork [data]<br />
+getworkex<br />
+getworkex [data, coinbase]<br />
+help<br />
+help [command]<br />
+importstealthaddress<br />
+importstealthaddress <scan_secret> <spend_secret> [label]<br />
+liststealthaddresses<br />
+liststealthaddresses [show_secrets=0]<br />
+List owned stealth addresses.<br />
 
-When used with show_secrets=1 it will return a list of all stealth addresses, the labels, the scan secrets and spend secrets.
+When used with show_secrets=1 it will return a list of all stealth addresses, the labels, the scan secrets and spend secrets.<br />
 
-listtransactions
-listtransactions [account] [count=10] [from=0] [show_coinstake=1]
-Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]. If you want to process Stealth transactions (TPAY) then you want to use this function.
+listtransactions<br /><br />
+listtransactions [account] [count=10] [from=0] [show_coinstake=1]<br />
+Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]. If you want to process Stealth transactions (TPAY) then you want to use this function.<br />
 
-There a bit of a trick necessary to get the stealth transactions, easier explained in an example: Stealth address = "smYmoN9xyenTSow9RP4ecf172sdKTeN9k4ZVCiUhFY6MTQRqSS2LRSZSZECwnZSb1a7EaCNc4aPrmrkexBXEs4qeJTZ6m9NjJBgnQE" => Account name = "ao smYmoN9xyenTSow9..."
+There a bit of a trick necessary to get the stealth transactions, easier explained in an example: Stealth address = "smYmoN9xyenTSow9RP4ecf172sdKTeN9k4ZVCiUhFY6MTQRqSS2LRSZSZECwnZSb1a7EaCNc4aPrmrkexBXEs4qeJTZ6m9NjJBgnQE" => Account name = "ao smYmoN9xyenTSow9..."<br />
 
-When stealth addresses are generated their account name is "ao first_16_chars...", the 3 dots at the end are important!
+When stealth addresses are generated their account name is "ao first_16_chars...", the 3 dots at the end are important!<br />
 
-makekeypair
-makekeypair [prefix]
-nextorphan
-nextorphan [connecthash]
-reloadanondata
-Removes all wallet transactions, anon cache, and rebuilds everything from zero.
+makekeypair<br />
+makekeypair [prefix]<br />
+nextorphan<br />
+nextorphan [connecthash]<br />
+reloadanondata<br />
+Removes all wallet transactions, anon cache, and rebuilds everything from zero.<br />
 
-repairwallet
-Repair wallet if checkwallet reports any problem
+repairwallet<br />
+Repair wallet if checkwallet reports any problem<br />
 
-resendtx
-reservebalance
-reservebalance [<reserve> [amount]]
-rewindchain
-rewindchain <number>
-scanforalltxns
-Scans for all transactions and overwrites prior history and does update.
+resendtx<br />
+reservebalance<br />
+reservebalance [<reserve> [amount]]<br />
+rewindchain<br />
+rewindchain <number><br />
+scanforalltxns<br />
+Scans for all transactions and overwrites prior history and does update.<br />
 
-scanforalltxns [fromHeight]
-scanforstealthtxns
-Scans for all Stealth transactions and overwrites prior history and does update.
+scanforalltxns [fromHeight]<br />
+scanforstealthtxns<br />
+Scans for all Stealth transactions and overwrites prior history and does update.<br />
 
-scanforstealthtxns [fromHeight]
-sendalert
-sendalert <message> <privatekey> <minver> <maxver> <priority> <id> [cancelupto]
-sendanontoanon
-sendanontoanon <stealth_address> <amount> <ring_size> [narration] [comment] [comment-to]
-sendanontoTPAY
-sendanontoTPAY <stealth_address> <amount> <ring_size> [narration] [comment] [comment-to]
-sendTPAYtoanon
-sendTPAYtoanon <stealth_address> <amount> [narration] [comment] [comment-to]
-sendtostealthaddress
-sendtostealthaddress <stealth_address> <amount> [comment] [comment-to] [narration]
-setbestblockbyheight
-setbestblockbyheight <height>
-settxfee
-settxfee <amount>
-stop
-Stop the tokenpay server
+scanforstealthtxns [fromHeight]<br />
+sendalert<br />
+sendalert <message> <privatekey> <minver> <maxver> <priority> <id> [cancelupto]<br />
+sendanontoanon<br />
+sendanontoanon <stealth_address> <amount> <ring_size> [narration] [comment] [comment-to]<br />
+sendanontoTPAY<br />
+sendanontoTPAY <stealth_address> <amount> <ring_size> [narration] [comment] [comment-to]<br />
+sendTPAYtoanon<br />
+sendTPAYtoanon <stealth_address> <amount> [narration] [comment] [comment-to]<br />
+sendtostealthaddress<br />
+sendtostealthaddress <stealth_address> <amount> [comment] [comment-to] [narration]<br />
+setbestblockbyheight<br />
+setbestblockbyheight <height><br />
+settxfee<br />
+settxfee <amount><br />
+stop<br />
+Stop the tokenpay server<br />
 
-thinscanmerkleblocks
-thinscanmerkleblocks <height>
-txnreport
-txnreport [collate_amounts] [show_key_images]
-thinforcestate
-thinforcestate <state>
-thinscanmerkleblocks
-thinscanmerkleblocks <height>
-txnreport
-txnreport [collate_amounts] [show_key_images]
-validatepubkey
-validatepubkey <tokenpaypubkey>
-SMSG API
+thinscanmerkleblocks<br />
+thinscanmerkleblocks <height><br />
+txnreport<br />
+txnreport [collate_amounts] [show_key_images]<br />
+thinforcestate<br />
+thinforcestate <state><br />
+thinscanmerkleblocks<br />
+thinscanmerkleblocks <height><br />
+txnreport<br />
+txnreport [collate_amounts] [show_key_images]<br />
+validatepubkey<br />
+validatepubkey <tokenpaypubkey><br />
+SMSG API<br />
+smsgaddkey<br />
 smsgaddkey
-smsgaddkey
 
-smsgaddkey <address> <pubkey>
-smsgbuckets [stats|dump]
-smsgbuckets [stats|dump]
-Display some statistics.
+smsgaddkey <address> <pubkey><br />
+smsgbuckets [stats|dump]<br />
+smsgbuckets [stats|dump]<br />
+Display some statistics.<br />
 
-smsgdisable
-Disable secure messaging
+smsgdisable<br />
+Disable secure messaging<br />
 
-smsgenable
-Enable secure messaging
+smsgenable<br />
+Enable secure messaging<br />
 
-smsggetpubkey
-smsggetpubkey <address>
-Returns the public key for a given address.
+smsggetpubkey<br />
+smsggetpubkey <address><br />
+Returns the public key for a given address.<br />
 
-Example:
-smsggetpubkey tFyq452LPtDotWat8PFwEV5oPoWDqagLNv
-Output:
-{
-"result" : "Success.",
-"address in wallet" : "tFyq452LPtDotWat8PFwEV5oPoWDqagLNv",
-"compressed public key" : "26S8iEiv2754RskjkWqRZkbZ22iNRYPgK7sUPyRPueXni"
-}
-smsginbox
-smsginbox [all|unread|clear]
-Decrypt and display all received messages. "all" will show all messages, "unread" will only show the unread messages.
+Example:<br />
+smsggetpubkey tFyq452LPtDotWat8PFwEV5oPoWDqagLNv<br />
+Output:<br />
+{<br />
+"result" : "Success.",<br />
+"address in wallet" : "tFyq452LPtDotWat8PFwEV5oPoWDqagLNv",<br />
+"compressed public key" : "26S8iEiv2754RskjkWqRZkbZ22iNRYPgK7sUPyRPueXni"<br />
+}<br />
+smsginbox<br />
+smsginbox [all|unread|clear]<br />
+Decrypt and display all received messages. "all" will show all messages, "unread" will only show the unread messages.<br />
 
-Warning: clear will delete all messages.
-Example:
-smsginbox all
+Warning: clear will delete all messages.<br />
+Example:<br />
+smsginbox all<br />
 
-Output:
-{
-"message" : {
-"received" : "2015-09-13 16:19:53 Romance",
-"sent" : "2015-09-13 16:19:51 Romance",
-"from" : "anon",
-"to" : "tFyq452LPtDotWat8PFwEV5oPoWDqagLNv",
-"text" : "TokenPay is awesome"
-},
-"message" : {
-"received" : "2015-09-13 16:18:36 Romance",
-"sent" : "2015-09-13 16:18:35 Romance ",
-"from" : "anon",
-"to" : "tFyq452LPtDotWat8PFwEV5oPoWDqagLNv",
-"text" : "This secure messagings is brilliant!"
-},
-"result" : "2 messages shown."
-}
-smsglocalkeys
-List and manage keys.
+Output:<br />
+{<br />
+"message" : {<br />
+"received" : "2015-09-13 16:19:53 Romance",<br />
+"sent" : "2015-09-13 16:19:51 Romance",<br />
+"from" : "anon",<br />
+"to" : "tFyq452LPtDotWat8PFwEV5oPoWDqagLNv",<br />
+"text" : "TokenPay is awesome"<br />
+},<br />
+"message" : {<br />
+"received" : "2015-09-13 16:18:36 Romance",<br />
+"sent" : "2015-09-13 16:18:35 Romance ",<br />
+"from" : "anon",<br />
+"to" : "tFyq452LPtDotWat8PFwEV5oPoWDqagLNv",<br />
+"text" : "This secure messagings is brilliant!"<br />
+},<br />
+"result" : "2 messages shown."<br />
+}<br />
+smsglocalkeys<br />
+List and manage keys.<br />
 
-smsglocalkeys [whitelist|all|wallet|recv <+/-> <address>|anon <+/-> <address>]
-smsgoptions
-smsgoptions [list|set <optname> <value>]
-List and manage the secure message options.
+smsglocalkeys [whitelist|all|wallet|recv <+/-> <address>|anon <+/-> <address>]<br />
+smsgoptions<br />
+smsgoptions [list|set <optname> <value>]<br />
+List and manage the secure message options.<br />
 
-Example 1:
-smsgoptions list
+Example 1:<br />
+smsgoptions list<br />
 
-Output:
-{
-"option" : "newAddressRecv = true",
-"option" : "newAddressAnon = true",
-"result" : "Success."
+Output:<br />
+{<br />
+"option" : "newAddressRecv = true",<br />
+"option" : "newAddressAnon = true",<br />
+"result" : "Success."<br />
 
-Example 2:
-smsgoptions set newAddressRecv false
+Example 2:<br />
+smsgoptions set newAddressRecv false<br />
 
-Output:
-{
-"option" : "newAddressRecv = false",
-"option" : "newAddressAnon = true",
-"result" : "Success."
-}
-smsgoutbox
-smsgoutbox [all|clear]
-Decrypt and display all sent messages.
+Output:<br />
+{<br />
+"option" : "newAddressRecv = false",<br />
+"option" : "newAddressAnon = true",<br />
+"result" : "Success."<br />
+}<br />
+smsgoutbox<br />
+smsgoutbox [all|clear]<br />
+Decrypt and display all sent messages.<br />
 
-Warning: clear will delete all sent messages.
-Will also show all messages sent with smsganonsend.
+Warning: clear will delete all sent messages.<br />
+Will also show all messages sent with smsganonsend.<br />
 
-Example:
+Example:<br />
 
-smsgoutbox
+smsgoutbox<br />
 
-Output:
-{
-"message" : {
-"sent" : "2015-09-13 16:19:51 Romance",
-"from" : "anon",
-"to" : "tFyq452LPtDotWat8PFwEV5oPoWDqagLNv",
-"text" : "TokenPay is awesome"
-},
-"message" : {
-"sent" : "2015-09-13 16:18:35 Romance",
-"from" : "anon",
-"to" : "tFyq452LPtDotWat8PFwEV5oPoWDqagLNv",
-"text" : "This secure messaging is brilliant!"
-},
-"result" : "2 sent messages shown."
-}
-smsgscanbuckets
-Force rescan of all messages in the bucket store.
+Output:<br />
+{<br />
+"message" : {<br />
+"sent" : "2015-09-13 16:19:51 Romance",<br />
+"from" : "anon",<br />
+"to" : "tFyq452LPtDotWat8PFwEV5oPoWDqagLNv",<br />
+"text" : "TokenPay is awesome"<br />
+},<br />
+"message" : {<br />
+"sent" : "2015-09-13 16:18:35 Romance",<br />
+"from" : "anon",<br />
+"to" : "tFyq452LPtDotWat8PFwEV5oPoWDqagLNv",<br />
+"text" : "This secure messaging is brilliant!"<br />
+},<br />
+"result" : "2 sent messages shown."<br />
+}<br />
+smsgscanbuckets<br />
+Force rescan of all messages in the bucket store.<br />
 
-smsgscanchain
-Look for public keys in the block chain.
+smsgscanchain<br />
+Look for public keys in the block chain.<br />
+<br />
+smsgsend<br />
+smsgsend <addrFrom> <addrTo> <message><br />
+smsgsendanon<br />
+smsgsendanon <addrTo> <message><br />
+Send and anonymous message to an address.<br />
 
-smsgsend
-smsgsend <addrFrom> <addrTo> <message>
-smsgsendanon
-smsgsendanon <addrTo> <message>
-Send and anonymous message to an address.
+smsgsendanon tFyq452LPtDotWat8PFwEV5oPoWDqagLNv "This secure messagings is brilliant!"<br />
 
-smsgsendanon tFyq452LPtDotWat8PFwEV5oPoWDqagLNv "This secure messagings is brilliant!"
+Output:<br />
+{<br />
+"result" : "Sent."<br />
+}<br />
+Contribute<br />
+TokenPay is an Open Source project which is created almost entirely by volunteers. There are lots of ways you can get involved and help the project grow and improve. Here are some ways for you to get started.<br />
 
-Output:
-{
-"result" : "Sent."
-}
-Contribute
-TokenPay is an Open Source project which is created almost entirely by volunteers. There are lots of ways you can get involved and help the project grow and improve. Here are some ways for you to get started.
+Code<br />
+TokenPay is controlled by all TokenPay users around the world. If you are a developer, you can use your super-powers to do good and contribute. The TokenPay project is hosted on GitHub. This is where developers work hard on the next version(s) of the software. To get involved with developing TokenPay, check out our detailed contributing guidelines. We credit all contributors to the TokenPay project in every major and minor release.<br />
 
-Code
-TokenPay is controlled by all TokenPay users around the world. If you are a developer, you can use your super-powers to do good and contribute. The TokenPay project is hosted on GitHub. This is where developers work hard on the next version(s) of the software. To get involved with developing TokenPay, check out our detailed contributing guidelines. We credit all contributors to the TokenPay project in every major and minor release.
+We hold public development meetings and chat in our Slack team. We also maintain a public roadmap and dev blog to give you an idea of what's being worked on right now, and what's coming next. Are you someone who might be interested? Do not hesitate and contact us directly.<br />
 
-We hold public development meetings and chat in our Slack team. We also maintain a public roadmap and dev blog to give you an idea of what's being worked on right now, and what's coming next. Are you someone who might be interested? Do not hesitate and contact us directly.
 
-Donate
-We are a non-profit and Open Source software project and are trying to build a private economy. We appreciate all the help we can get in making this a reality. Both addresses are managed by Rynomster (lead developer). If applicable, please specify whether you want to remain anonymous. Many thanks to all our sponsors!
 
-Official BTC donation address: 1GiosBkSpN8RS9pm1kgZU8AZUBEnLKYFem
-Official TPAY development donation address: TPAYDevWEbq3CZgZc8UNbST1TaYLA5vLZTS
-Report
-If you think you've found a bug or a problem with TokenPay, please let us know! First, search our issue tracker to search to see if someone has already reported the problem. If they haven't, click here to open a new issue, and fill out the template with as much information as possible. The more you can tell us about the problem and how it occurred, the more likely we are to fix it. Please check out our bug and bounty program for our guidelines and more details.
 
-Please do not report security vulnerabilities publicly. The details for responsible disclosure of security issues can be found in our bug and bounty program.
+If you think you've found a bug or a problem with TokenPay, please let us know! First, search our issue tracker to search to see if someone has already reported the problem. If they haven't, click here to open a new issue, and fill out the template with as much information as possible. The more you can tell us about the problem and how it occurred, the more likely we are to fix it. Please check out our bug and bounty program for our guidelines and more details.<br />
 
-Bugs & Bounty program
-Official bug donation Address: TPAYbug68Hcpim7zpnEZsQRRz1rowvz9axS
+Please do not report security vulnerabilities publicly. The details for responsible disclosure of security issues can be found in our bug and bounty program.<br />
 
-According to Linus’ Law, “given enough eyeballs, all bugs are shallow”. That’s one of the reasons why TokenPay’s source code is publicly available; but merely making the source code available doesn’t accomplish anything if people don’t read it!
+Bugs & Bounty program<br />
 
-For this reason, TokenPay has a series of bug bounties. Similar to the bounties offered by Mozilla and Google, TokenPay bug bounties provide an opportunity for people who find bugs to be compensated. Unlike those programs, however, TokenPay’s bounties are not limited to security vulnerabilities.
 
-Depending on the type of bug and when it is reported, different bounties will be awarded. Bounties are paid out in TPAY, at the 3-day average of each to a fixed US Dollar value.
 
-Things that do not qualify under the bug bounty
-Bugs found on third-party/community sites, software or services, which is not due to an improper configuration issue specific to us. Please submit any potential issues to the maintainers of that site or providers of that service.
-Vulnerabilities which are too broad or not documented properly (i.e. do not include a specific example relevant to a - TokenPay-controlled site or application).
-Bugs or issues with a third-party site, software, or service that we use, which is not due to an improper configuration issue specific to us. Please submit any potential issues to the maintainers of that site or providers of that service.
-Bugs and errors found in software/code that is still undergoing alpha or beta testing.
-Usability issues
-Anything requiring social engineering
-DOS/DDOS attacks
-Missing HSTS (HttpOnly flags), Secure flag, Browser Cache vulnerabilities
-CSRF that doesn’t affect the victim
-Referrer leakage to pages an attacker cannot control.
-The presence of unnecessary files, e.g. for backups, when these files do not expose any sensitive information.
-Anything that is the result of an automated Nessus/PCI scans (too general)
-DNS issues (e.g. lack of an SPF record)
-SSL certificate issues
-Bugs that have received mainstream tech media or community attention before the date of your disclosure.
-Bug Bounties and Rewards
-$3000 Deanonymize TokenPay (proof that a protocol is not anonymous)
-$1500 A flaw in the protocol that allows for theft or loss of funds
-$1000 A bug in the reference client that leads to consensus issues
-$8000 A bug which causes data corruption or loss
-$200 A bug which causes the application to crash
-$100 Other non-harmless bugs
-$20 ‘Harmless’ bugs, e.g. cosmetic errors
-How to report a bug
-Security-related issues
-Contact the developers privately by sending an e-mail to Team@tokenpay.com with the details of the issue. Do not post the issue on github or anywhere else until the issue has been resolved.
+TokenPay has a series of bug bounties. Similar to the bounties offered by Mozilla and Google, TokenPay bug bounties provide an opportunity for people who find bugs to be compensated. Unlike those programs, however, TokenPay’s bounties are not limited to security vulnerabilities.<br />
 
-Code issues
-We would strongly prefer if you create a pull-request on Github in the proper repository with the necessary fix (along with your TPAY address to claim the bounty). For more information, see this link.
+Depending on the type of bug and when it is reported, different bounties will be awarded. Bounties are paid out in TPAY, at the 3-day average of each to a fixed US Dollar value.<br />
+
+Things that do not qualify under the bug bounty<br />
+Bugs found on third-party/community sites, software or services, which is not due to an improper configuration issue specific to us. Please submit any potential issues to the maintainers of that site or providers of that service.<br />
+Vulnerabilities which are too broad or not documented properly (i.e. do not include a specific example relevant to a - TokenPay-controlled site or application).<br />
+Bugs or issues with a third-party site, software, or service that we use, which is not due to an improper configuration issue specific to us. Please submit any potential issues to the maintainers of that site or providers of that service.<br />
+Bugs and errors found in software/code that is still undergoing alpha or beta testing.<br />
+Usability issues<br />
+Anything requiring social engineering<br />
+DOS/DDOS attacks<br />
+Missing HSTS (HttpOnly flags), Secure flag, Browser Cache vulnerabilities<br />
+CSRF that doesn’t affect the victim<br />
+Referrer leakage to pages an attacker cannot control.<br />
+The presence of unnecessary files, e.g. for backups, when these files do not expose any sensitive information.<br />
+Anything that is the result of an automated Nessus/PCI scans (too general)<br />
+DNS issues (e.g. lack of an SPF record)<br />
+SSL certificate issues<br />
+Bugs that have received mainstream tech media or community attention before the date of your disclosure.<br />
+Bug Bounties and Rewards<br />
+$3000 Deanonymize TokenPay (proof that a protocol is not anonymous)<br />
+$1500 A flaw in the protocol that allows for theft or loss of funds<br />
+$1000 A bug in the reference client that leads to consensus issues<br />
+$8000 A bug which causes data corruption or loss<br />
+$200 A bug which causes the application to crash<br />
+$100 Other non-harmless bugs<br />
+$20 ‘Harmless’ bugs, e.g. cosmetic errors<br />
+How to report a bug<br />
+Security-related issues<br />
+Contact the developers privately by sending an e-mail to Team@tokenpay.com with the details of the issue. Do not post the issue on github or anywhere else until the issue has been resolved.<br />
+
+Code issues<br />
+We would strongly prefer if you create a pull-request on Github in the proper repository with the necessary fix (along with your TPAY address to claim the bounty). For more information, see this link.<br />
