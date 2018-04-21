@@ -240,13 +240,13 @@ You can also instantly pay for purchases with TokenPay anywhere Bitcoin is accep
 
 ## Network Consensus
 
-### Proof of Work (PoW) - Complete
+
 Specification | Value
 --- | ---
 Algo | Scrypt
-Max Height | 31000 (after this network will not accept PoW blocks)
-TPAY Circulation |  ~25,000,000 TPAY
-Length | two weeks of PoW
+
+TPAY Circulation |  ~14,250,000 TPAY
+
 
 ### Proof of Stake (PoS) - Ongoing
 Specification | Value
