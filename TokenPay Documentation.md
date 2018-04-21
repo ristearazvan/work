@@ -1038,7 +1038,7 @@ When used with show_secrets=1 it will return a list of all stealth addresses, th
 
 listtransactions
 listtransactions [account] [count=10] [from=0] [show_coinstake=1]
-Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]. If you want to process Stealth transactions (SDT) then you want to use this function.
+Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]. If you want to process Stealth transactions (TPAY) then you want to use this function.
 
 There a bit of a trick necessary to get the stealth transactions, easier explained in an example: Stealth address = "smYmoN9xyenTSow9RP4ecf172sdKTeN9k4ZVCiUhFY6MTQRqSS2LRSZSZECwnZSb1a7EaCNc4aPrmrkexBXEs4qeJTZ6m9NjJBgnQE" => Account name = "ao smYmoN9xyenTSow9..."
 
