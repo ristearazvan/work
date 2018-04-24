@@ -213,9 +213,9 @@ Protocol | **PoSv3**
 Block Time | **60 seconds**
 Difficulty Re-target | **every block**
 Nominal Stake Interest | **5% annually for the first year and 1% after**
-Min Stake Age | **8 hours** (no max age)
-P2P Port | 51737
-RPC Port | 51736
+Min Stake Age | **2 hours** (no max age)
+P2P Port | 8800
+RPC Port | 8801
 
 ### Transactions
 
