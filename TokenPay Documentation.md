@@ -135,27 +135,27 @@ struggle will strike you as the most beautiful.”
 
 <span class="tokenpay-table"></span>
 
-|                      |   TOKENPAY   |   MONERO   |    DASH    |  DARKNOTE  |  BITCOIN  |  ZCASH  |
-| -------------------- | ---------- | -----------| ---------- | ---------- | ---------- | ---------- |
-| **Mixing**    |    false    |    false    |    true    |    false    |    false    |    false    |
-| **Stealth Addresses**   |    true    |    true    |    false    |    true    |    false    |    true    |
-| **Ring Signatures**   |    true    |    true    |    false    |    true    |    false    |    true    |
-| **Zero Knowledge Proofs**   |    true    |    true    |    false    |    true    |    false    |    true    |
-| **Untraceable**    |    true    |    true    |    undefined    |    true    |    false    |    undefined    |
-| **Unlinkable**    |    true    |    true    |    false    |    true    |    false    |    undefined    |
-| **End to end Anon** |    true    |    true    |    false    |    true    |    false    |    undefined    |
+|                      |   TOKENPAY   |   MONERO   |    DASH    |    BITCOIN  |  ZCASH  |
+| -------------------- | ---------- | -----------| ---------- | ---------- | ---------- |
+| **Mixing**    |    false    |    false    |    true    |    false    |    false    |
+| **Stealth Addresses**   |    true    |    true    |    false    |   false    |    true    |
+| **Ring Signatures**   |    true    |    true    |    false    |    false    |    true    |
+| **Zero Knowledge Proofs**   |    true    |    true    |    false    |    false    |    true    |
+| **Untraceable**    |    true    |    true    |    undefined    |    false    |    undefined    |
+| **Unlinkable**    |    true    |    true    |    false    |    false    |    undefined    |
+| **End to end Anon** |    true    |    true    |    false    |    false    |    undefined    |
 
 ### Wallet features
 
 <span class="tokenpay-table"></span>
 
-|                      |   TOKENPAY   |   MONERO   |    DASH    |  DARKNOTE  |  BITCOIN  |  ZCASH  |
-| -------------------- | ---------- | -----------| ---------- | ---------- | ---------- | ---------- |
-| **GUI Wallet**    |    true    |    false    |    true    |    true    |    true    |    progress    |
-| **HTML Interface**   |    true    |    false    |    false    |    false    |    false    |    false    |
-| **Lite Wallet**    |    true    |    false    |    false    |    true    |    false    |    false    |
-| **HD Wallet**    |    true    |    false    |    false    |    false    |    true    |    undefined    |
-| **Multisignatures** |    progress    |    false    |    false    |    false    |    true    |    undefined    |
+|                      |   TOKENPAY   |   MONERO   |    DASH    |    BITCOIN    |  ZCASH  |
+| -------------------- | ---------- | -----------| ---------- | ---------- | ---------- | 
+| **GUI Wallet**    |    true    |    false    |    true    |    true    |    progress    |
+| **HTML Interface**   |    true    |    false    |    false    |    false    |    false    |
+| **Lite Wallet**    |    true    |    false    |    false    |    false    |    false    |
+| **HD Wallet**    |    true    |    false    |    false    |    true    |    undefined    |
+| **Multisignatures** |    progress    |    false    |    false    |    true    |    undefined    |
 
 - GUI: General User Interface
 - HD: Hierarchical Deterministic
@@ -164,20 +164,20 @@ struggle will strike you as the most beautiful.”
 
 <span class="tokenpay-table"></span>
 
-|                      |   TOKENPAY   |   MONERO   |    DASH    |  DARKNOTE  |  BITCOIN  |  ZCASH  |
-| -------------------- | ---------- | -----------| ---------- | ---------- | ---------- | ---------- |
-| **Web Wallet**    |    false    |    true    |    false    |    false    |    false    |    false    |
-| **Fast Transactions**   |    false    |    false    |    true    |    false    |    false    |    false    |
-| **Incentive Nodes**   |    false    |    false    |    true    |    false    |    false    |    false    |
+|                      |   TOKENPAY   |   MONERO   |    DASH    |  BITCOIN  |  ZCASH  |
+| -------------------- | ---------- | -----------| ---------- | ---------- | ---------- | 
+| **Web Wallet**    |    false    |    true    |    false    |    false    |    false    |
+| **Fast Transactions**   |    false    |    false    |    true    |    false    |    false    |
+| **Incentive Nodes**   |    false    |    false    |    true    |    false    |    false    |
 
 ### Blockchain Decentralized Apps
 
 <span class="tokenpay-table"></span>
 
-|                      |   TOKENPAY   |   MONERO   |    DASH    |  DARKNOTE  |  BITCOIN  |  ZCASH  |
-| -------------------- | ---------- | -----------| ---------- | ---------- | ---------- | ---------- |
-| **Encrypted Chat**    |    true    |    false    |    false    |    true    |    false    |    false    |
-| **MarketPlace**   |    progress    |    false    |    false    |    false    |    false    |    false    |
+|                      |   TOKENPAY   |   MONERO   |    DASH    |  BITCOIN  |  ZCASH  |
+| -------------------- | ---------- | -----------| ---------- | ---------- | ---------- | 
+| **Encrypted Chat**    |    true    |    false    |    false    |    false    |    false    |
+| **MarketPlace**   |    progress    |    false    |    false    |    false    |    false    |
 
 # Community
 
