@@ -241,9 +241,7 @@ TokenPay is available at the moment on:
 ## Network Consensus
 
 
-Specification | Value
---- | ---
-Algo | Scrypt
+
 
 TPAY Circulation |  15,295,909 TPAY
 
