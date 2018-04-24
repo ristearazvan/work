@@ -250,8 +250,7 @@ TPAY Circulation |  15,295,909 TPAY
 Specification | Value
 --- | ---
 Algo | Sha256 (formerly Scrypt)
-Nominal Stake Interest | 1% annually
-
+Nominal Stake Interest | 5% annual static inflation
 ### Multipool
 PoW mining has ended, but you can still use your mining rigs to earn ShadowCash by using the [TPAY Multipool](https://www.shadowpool.info/). Point your rigs and enter your TPAY payout address to begin!
 
