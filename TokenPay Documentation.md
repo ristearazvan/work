@@ -196,9 +196,12 @@ TokenPay branded wallet will receive 5 coins per year or 0.0137 TPAY per day.
 Below you will find a list of places where you can find other TokenPay users, community members and news.
 
 
-- Blog: [blog.tokenpay.com](https://medium.com/tokenpay)
-- Twitter: [twitter.com/tokenpay](https://twitter.com/tokenpay)
-
+- Blog: [medium.tokenpay.com] (https://medium.com/tokenpay)
+- Forum: [bitcointalk.tokenpay.com] (https://bitcointalk.org/index.php?topic=2400499.0)
+- Twitter: [twitter.com/tokenpay] (https://twitter.com/tokenpay)
+- Telegram: [telegram.tokenpay.com] (https://t.me/joinchat/GgZih0NrYt2F11oXwQ11Cg)
+- Reddit: [reddit.com/r/ttokenpay] (https://www.reddit.com/r/tokenpay/)
+- Facebook: [facebook.com/tokenpay] (https://www.facebook.com/tokenpay/)
 
 # Currency
 
@@ -1122,8 +1125,6 @@ Output:<br />
 {<br />
 "result" : "Sent."<br />
 }<br />
-Contribute<br />
-TokenPay is an Open Source project which is created almost entirely by volunteers. There are lots of ways you can get involved and help the project grow and improve. Here are some ways for you to get started.<br />
 
 Code<br />
 TokenPay is controlled by all TokenPay users around the world. If you are a developer, you can use your super-powers to do good and contribute. The TokenPay project is hosted on GitHub. This is where developers work hard on the next version(s) of the software. To get involved with developing TokenPay, check out our detailed contributing guidelines. We credit all contributors to the TokenPay project in every major and minor release.<br />
