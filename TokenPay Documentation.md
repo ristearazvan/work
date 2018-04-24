@@ -245,14 +245,14 @@ Specification | Value
 --- | ---
 Algo | Scrypt
 
-TPAY Circulation |  ~14,250,000 TPAY
+TPAY Circulation |  15,295,909 TPAY
 
 
 ### Proof of Stake (PoS) - Ongoing
 Specification | Value
 --- | ---
 Algo | Sha256 (formerly Scrypt)
-Nominal Stake Interest | 2% annually
+Nominal Stake Interest | 1% annually
 
 ### Multipool
 PoW mining has ended, but you can still use your mining rigs to earn ShadowCash by using the [TPAY Multipool](https://www.shadowpool.info/). Point your rigs and enter your TPAY payout address to begin!
