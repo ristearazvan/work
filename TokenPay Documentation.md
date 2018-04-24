@@ -222,8 +222,8 @@ RPC Port | 8801
 | Specification   | Value          |
 | --------------- | -------------- |
 | Min Fee         | **0.0001 TPAY** |
-| Confirmations   | **10**         |
-| Maturity        | **500**        |
+| Confirmations   | **6**         |
+| Maturity        | **100**        |
 
 ## Exchanges
 
