@@ -314,16 +314,16 @@ To create a better user experience TokenPay implemented [BIP39](https://github.c
 # Download
 
 ## Desktop Wallet
-- Latest(https://tokenpay.app.box.com/v/tokenpaywindowswallet)
+- Latest (https://tokenpay.app.box.com/v/tokenpaywindowswallet)
 
-##MAC Wallet 
-- Latest(https://tokenpay.app.box.com/v/TokenPayMACWallet)
+## MAC Wallet 
+- Latest (https://tokenpay.app.box.com/v/TokenPayMACWallet)
 
-##Linux Wallet
--Latest(https://www.tokenpay.com/images/tokenpay-page43.png)
+## Linux Wallet
+-Latest (https://www.tokenpay.com/images/tokenpay-page43.png)
 
-##Android Wallet
--Latest(https://play.google.com/store/apps/details?id=com.tokenpay.wallet&hl=en)
+## Android Wallet
+-Latest (https://play.google.com/store/apps/details?id=com.tokenpay.wallet&hl=en)
 
 
 
