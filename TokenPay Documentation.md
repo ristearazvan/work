@@ -141,9 +141,11 @@ struggle will strike you as the most beautiful.”
 | **Stealth Addresses**   |    true    |    true    |    false    |   false    |    true    |
 | **Ring Signatures**   |    true    |    true    |    false    |    false    |    true    |
 | **Zero Knowledge Proofs**   |    true    |    true    |    false    |    false    |    true    |
-| **Untraceable**    |    true    |    true    |    undefined    |    false    |    undefined    |
-| **Unlinkable**    |    true    |    true    |    false    |    false    |    undefined    |
-| **End to end Anon** |    true    |    true    |    false    |    false    |    undefined    |
+| **Untraceable**    |    true    |    true    |    false    |    false    |    false    |
+| **Unlinkable**    |    true    |    true    |    false    |    false    |    false    |
+| **End to end Anon** |    true    |    true    |    false    |    false    |    false    |
+| **Secure Chat** |    true    |    false    |    false    |    false    |    false    |
+| **Tor Network Integration** |    true    |    false    |    false    |    false    |    false    |
 
 ### Wallet features
 
@@ -154,8 +156,8 @@ struggle will strike you as the most beautiful.”
 | **GUI Wallet**    |    true    |    false    |    true    |    true    |    progress    |
 | **HTML Interface**   |    true    |    false    |    false    |    false    |    false    |
 | **Lite Wallet**    |    true    |    false    |    false    |    false    |    false    |
-| **HD Wallet**    |    true    |    false    |    false    |    true    |    undefined    |
-| **Multisignatures** |    progress    |    false    |    false    |    true    |    undefined    |
+| **HD Wallet**    |    true    |    false    |    false    |    true    |    false    |
+| **Multisignatures** |    progress    |    false    |    false    |    true    |    false    |
 
 - GUI: General User Interface
 - HD: Hierarchical Deterministic
@@ -211,11 +213,13 @@ Specification | Value
 --- | ---
 Protocol | **PoSv3**
 Block Time | **60 seconds**
-Difficulty Re-target | **every block**
+Difficulty Re-target | **10 minutes**
 Nominal Stake Interest | **5% annually for the first year and 1% after**
 Min Stake Age | **2 hours** (no max age)
 P2P Port | 8800
 RPC Port | 8801
+Blockchain Explorer | [Website] (http://explorer.tpay.ai)
+
 
 ### Transactions
 
