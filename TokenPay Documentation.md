@@ -157,7 +157,7 @@ struggle will strike you as the most beautiful.”
 | **HTML Interface**   |    true    |    false    |    false    |    false    |    false    |
 | **Lite Wallet**    |    true    |    false    |    false    |    false    |    false    |
 | **HD Wallet**    |    true    |    false    |    false    |    true    |    false    |
-| **Multisignatures** |    progress    |    false    |    false    |    true    |    false    |
+| **Multisignatures** |    true    |    false    |    false    |    true    |    false    |
 
 - GUI: General User Interface
 - HD: Hierarchical Deterministic
