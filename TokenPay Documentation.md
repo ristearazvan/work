@@ -434,7 +434,7 @@ Stopping tokenpayd
 >tokenpayd stop
 
 
-If you wish you can also compile directly from source, follow these instructions to compile latest ShadowCore headless daemon based on Debian/Ubuntu. Please also refer to the build instructions for more detailed information.*
+If you wish you can also compile directly from source, follow these instructions to compile latest TokenPay headless daemon based on Debian/Ubuntu. Please also refer to the build instructions for more detailed information.*
 
 ## Graphical Linux Wallet from Source (TokenPay Qt)
 
