@@ -387,7 +387,7 @@ Update and Install dependencies:
 >sudo apt-get install git build-essential libssl-dev libdb-dev libdb++-dev libboost-all-dev libqrencode-dev
 
 ```
-Download the source code and compile shadowcoind
+Download the source code and compile tokenpayd
 ```
 >git clone https://github.com/tokenpay
 >cd tokenpay/src
@@ -453,7 +453,7 @@ Download the source code and compile tokenpay QT
 >make
 
 ```
-Run the executable found within the shadowcoin folder with :
+Run the executable found within the tokenpay folder with :
 ```
 >./tokenpay
 
@@ -665,7 +665,7 @@ There are two ways in which TokenPay tokens (TPAY) can be spent:
 
 * When redeemed as TPAY, new TPAY is created to the value of the input TokenPay minus the transaction fee.*
 
-In both cases the input tokens become unspendable. The transaction fee for spending TokenPay tokens is 100x greater than the fee for standard transactions. This is to cover the cost of the extra activity required by the network to transmit, verify and store shadow transactions, which are larger and require more processing than standard transactions.
+In both cases the input tokens become unspendable. The transaction fee for spending TokenPay tokens is 100x greater than the fee for standard transactions. This is to cover the cost of the extra activity required by the network to transmit, verify and store TPAY transactions, which are larger and require more processing than standard transactions.
 
 In order to spend TokenPay, we use ring signatures to sign the transaction. Our scheme consists of three functions, ```generateRingSignature```, ```generateKeyImage```, ```verifyRingSignature```.
 
