@@ -555,12 +555,12 @@ Parameter | value
 ### Address Computation and Transaction Format
 ```
 
-Alice (receiver)
-publicSpendKeyAlice = public spend key
-privateSpendKeyAlice = private spend key
+Bob (receiver)
+publicSpendKeyBob = public spend key
+privateSpendKeyBob = private spend key
 
-publicScanKeyAlice = EC point, 33 bytes
-privateScanKeyAlice = integer, 32 bytes
+publicScanKeyBob = EC point, 33 bytes
+privateScanKeyBob = integer, 32 bytes
 
 This is where it gets a bit more complicated, but no magic, just math!
 G = Generator, the primitive root
@@ -568,43 +568,43 @@ G = Generator, the primitive root
 To continue on, we have to understand how the public addresses are generated.
 A public key is the private key multiplied by the primitive root G.
 
-publicSpendKeyAlice = privateSpendKeyAlice * G
-publicScanKeyAlice = privateScanKeyAlice * G
+publicSpendKeyBob = privateSpendKeyBob * G
+publicScanKeyBob = privateScanKeyBob * G
 
-Bob (sender)
+Amy (sender)
 e = ephem secret key = ephem private key
 publicEphemKey = e * G
-Knows the public scan key of Alice (publicScanKeyAlice)!
+Knows the public scan key of Bob (publicScanKeyBob)!
 
 Ephem is short for ephemeral, which means “short lived”. The ephem secret and public key are only used once and change on every stealth transaction.
 
-Bob now publishes the public ephem key (publicEphemKey) to the receiver Alice.
+Amy now publishes the public ephem key (publicEphemKey) to the receiver Bob.
 
 Because of the diffie-hellman algorithm ONLY THE RECEIVER AND SENDER can deduct the shared secret from the public ephem key.
 
-SharedSecret = SHA256(ephem private key  * publicScanKeyAlice) (Formula for Sender)
-SharedSecret = SHA256(privateScanKeyAlice * publicEphemKey) (Formula for Receiver)
+SharedSecret = SHA256(ephem private key  * publicScanKeyBob) (Formula for Sender)
+SharedSecret = SHA256(privateScanKeyBob * publicEphemKey) (Formula for Receiver)
 
-Bob can now generate the public key to where it should send the coins.
-publicKeyToPay = publicSpendKeyAlice + SharedSecret * G
+Amy can now generate the public key to where it should send the coins.
+publicKeyToPay = publicSpendKeyBob + SharedSecret * G
 
-Alice has two different ways of find out the the public key where the coins will go to.
+Bob has two different ways of find out the the public key where the coins will go to.
 When the wallet is encrypted:
-publicKeyToPay = publicSpendKeyAlice + SharedSecret * G
+publicKeyToPay = publicSpendKeyBob + SharedSecret * G
 
 When the wallet is decrypted:
-publicKeyToPay = (privateSpendKeyAlice + SharedSecret)* G
+publicKeyToPay = (privateSpendKeyBob + SharedSecret)* G
 ```
 
-If Alice would post a normal address publicly, anyone can explore the blockchain and see the transactions that belong to her. Stealth addresses solve this privacy issue. Alice can post her Stealth address publicly, and nobody will be any wiser of what transactions belong to her.
+If Bob would post a normal address publicly, anyone can explore the blockchain and see the transactions that belong to her. Stealth addresses solve this privacy issue. Bob can post her Stealth address publicly, and nobody will be any wiser of what transactions belong to her.
 
 **It's extremely important to note that the payer derives a new NORMAL address from the Stealth address, to which the funds will be sent and in that process only allowing the payee to compute the corresponding private key.**
 
 It uses a clever mathematical principle called the "Diffie-Hellman Key Exchange", which allows two entities to generate a shared secret based on their keypairs. An eavesdropper is unable to compute the shared secret, enabling private communication between the two. In the case an eavesdropper has full control over one of the keypairs (private and public key) then privacy is obviously broken.
 
-It is important to mention that we can not use the ```SharedSecret``` directly to generate the keypair, because that would also allow the sender control over the private key. Instead a bit of mathematical "magic" (BIP32-style derivation) is applied: the ```SharedSecret``` is added to ```PrivateKeyAlice``` and we use that to generate the new keypair.
+It is important to mention that we can not use the ```SharedSecret``` directly to generate the keypair, because that would also allow the sender control over the private key. Instead a bit of mathematical "magic" (BIP32-style derivation) is applied: the ```SharedSecret``` is added to ```PrivateKeyBob``` and we use that to generate the new keypair.
 
-It uses a system of dual-keys to allow the wallet software to scan for stealth payments (using ```ScanKeyAlice```) but not make any transactions, because that would require decryption of the wallet/stealth key.
+It uses a system of dual-keys to allow the wallet software to scan for stealth payments (using ```ScanKeyBob```) but not make any transactions, because that would require decryption of the wallet/stealth key.
 All transactions have to be made with the ```SpendKey```, only available after decrypting your wallet.
 The dual-key is more of a security practice, it allows a wallet (while encrypted) to scan for transactions. If it weren't implemented, the wallet would have to remain decrypted, rendering the protection provided by the encryption useless.
 
