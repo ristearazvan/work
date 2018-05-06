@@ -789,7 +789,7 @@ The messages are stored on each node for a maximum period of 48 hours, after whi
 
 Stored messages are grouped by time in divisions of 1 hour. The system operates on the grouped buckets of messages to save bandwidth.
 
-# Synchronization of buckets between peer nodes 
+## Synchronization of buckets between peer nodes 
 
 Elliptic Curve Diffie-Hellman Key Exchange P2P Messaging
 All of the messages sent and received are encrypted by the proven
@@ -809,12 +809,12 @@ network, and a copy of each encrypted message is stored on each node for
 48 hours. Following this period, the messages are permanently deleted with
 no chance of retrieval by any party
 
-# Decryption 
+## Decryption 
 For each incoming message a node will attempt to decode the message with every owned address contained in the nodes white-list of addresses to receive messages on.
 
 To speed up the process and allow for any payload format to be used, the Message Authentication Code (MAC) is calculated for the generated shared secret key, if it does not match the MAC provided in the message, decryption will fail and the function ends.
 
-# Detailed Procedure
+## Detailed Procedure
 
 Get IV and R from the message block
 Get the private key k of the recipient used to decrypt.
