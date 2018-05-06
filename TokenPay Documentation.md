@@ -53,6 +53,7 @@ process for TokenPay. Ultimately the business failed because of this. But there
 was no shortage of demand with wannabe consumer and merchant clients
 clamoring for an account. The public was clearly beginning to embrace the
 idea of digital cash. It was however too early.
+
 Fast forward to 2013 and a new emerging payment technology called Bitcoin
 was in the news after spiking in value from virtual pennies to over $1000.
 Despite my suggestion for a potential move to a blockchain payment platform,
@@ -67,6 +68,7 @@ headphone company called Skullcandy. Eventually we became real life friends
 and business partners. We created a startup of our own called eFin. This is a
 website where ordinary investors could receive hedge fund level research in an
 automated fashion.
+
 Around the same time, I stumbled upon an online stock trading community
 called investFeed. The nascent social media startup happened to be in the
 midst of its seed round. After speaking at length with the operators, I decided
@@ -82,13 +84,14 @@ developed was fully integrated into the Ustocktrade platform. This was great
 and all for us and it sure seemed like eFin was off to the races. However, I
 noticed something very different. The fintech conference was being
 dominated not by stock discussion, but by blockchain.
-© 2017, TokenPay.com or its aliates | TPAY is a utility token used in the TokenPay platform. Purchase does not constitute investment. 12
+
 Early in 2017 after realizing the challenge that investFeed was facing in terms
 of traffic generation, I suggested to the founders that they should immediately
 focus on cryptocurrencies rather than stocks. While there were other investors
 that remained naturally apprehensive of the abrupt change in strategy,
 investFeed embraced the new concept. The blueprint was written and an ICO
 was quickly launched.
+
 investFeed sold approximately $4 million of an Ethereum based token in a
 matter of weeks. The investFeed platform is now flourishing. Traffic is surging
 and the future looks extremely bright. I could not be happier for the team and
@@ -99,6 +102,7 @@ no doubt the right move. We have not even seen the tip of the iceberg yet
 when it comes to blockchain technology, particularly when it comes to
 cryptocurrency applications. And I know this, because at the same time Derek
 was working hard on something very special. I had to get in on it.
+
 After constantly hearing about countless hacks causing chaotic volatility in the
 cryptocurrency markets, Derek came up with a novel idea. He partnered with a
 group of obsessively privacy driven cryptographic coders on a top secret
@@ -235,9 +239,9 @@ Currently you can only buy TokenPay (TPAY) once you have Bitcoin (BTC). Bitcoin 
 
 TokenPay is available at the moment on:
 
-- [QRYPYOS] (https://home.qryptos.com/basic/TPAYBTC)
-- [QRYPYOS] (https://home.qryptos.com/basic/TPAYETH)
-- [QRYPYOS] (https://home.qryptos.com/basic/TPAYQASH)
+- [QRYPTOS] (https://home.qryptos.com/basic/TPAYBTC)
+- [QRYPTOS] (https://home.qryptos.com/basic/TPAYETH)
+- [QRYPTOS] (https://home.qryptos.com/basic/TPAYQASH)
 
 
 
@@ -698,6 +702,7 @@ technology behind this new form of money called blockchain. It is entirely
 driven by math and is completely decentralized. Most notably, unlike all
 previous forms of money, cryptocurrencies are not able to be manipulated. It is
 essentially money 2.0.
+
 Blockchain is experiencing a period of exponential growth and adoption, not
 unlike the collective transition towards internet use in the 90’s. Established in
 2008, Bitcoin is a cryptocurrency based on blockchain. In just a matter of
@@ -712,6 +717,7 @@ platform, others on highly liquid Ethereum and Litecoin. The features of the
 coin vary widely from practical to practically useless depending on the
 underlying technology. However, there exists a dramatic misalignment in the
 metamorphic shift to digital currencies.
+
 The major underlying problem is that traditional financial institutions and the
 related governing and operating regulations are not well aligned with
 cryptocurrencies. The concept behind public banks was designed and
@@ -726,6 +732,7 @@ a regulatory body or international fiscal treaties. Currently, there exists an
 intermediate “limbo” state whereby many cryptocurrency holders are unable
 to benefit from the corresponding economic value. There must be a solution to
 this critical problem that is affecting an rapidly increasing amount of people.
+
 © 2017, TokenPay.com or its aliates | TPAY is a utility token used in the TokenPay platform. Purchase does not constitute investment. 14
 TokenPay’s platform has been designed to combine the strengths of an
 established banking institution with the flexibility and future-forward potential
@@ -1334,8 +1341,6 @@ Output:
 Code<br />
 TokenPay is controlled by all TokenPay users around the world. If you are a developer, you can use your super-powers to do good and contribute. The TokenPay project is hosted on GitHub. This is where developers work hard on the next version(s) of the software. To get involved with developing TokenPay, check out our detailed contributing guidelines. We credit all contributors to the TokenPay project in every major and minor release.<br />
 
-We hold public development meetings and chat in our Slack team. We also maintain a public roadmap and dev blog to give you an idea of what's being worked on right now, and what's coming next. Are you someone who might be interested? Do not hesitate and contact us directly.<br />
-
 
 
 
@@ -1343,7 +1348,7 @@ If you think you've found a bug or a problem with TokenPay, please let us know! 
 
 Please do not report security vulnerabilities publicly. The details for responsible disclosure of security issues can be found in our bug and bounty program.<br />
 
-Bugs & Bounty program<br />
+# Bugs & Bounty program<br />
 
 
 
@@ -1368,13 +1373,13 @@ DNS issues (e.g. lack of an SPF record)<br />
 SSL certificate issues<br />
 Bugs that have received mainstream tech media or community attention before the date of your disclosure.<br />
 Bug Bounties and Rewards<br />
-$3000 Deanonymize TokenPay (proof that a protocol is not anonymous)<br />
-$1500 A flaw in the protocol that allows for theft or loss of funds<br />
-$1000 A bug in the reference client that leads to consensus issues<br />
-$8000 A bug which causes data corruption or loss<br />
-$200 A bug which causes the application to crash<br />
-$100 Other non-harmless bugs<br />
-$20 ‘Harmless’ bugs, e.g. cosmetic errors<br />
+**$3000** Deanonymize TokenPay (proof that a protocol is not anonymous)<br />
+**$1500** A flaw in the protocol that allows for theft or loss of funds<br />
+**$1000** A bug in the reference client that leads to consensus issues<br />
+**$8000** A bug which causes data corruption or loss<br />
+**$200** A bug which causes the application to crash<br />
+**$100** Other non-harmless bugs<br />
+**$20** ‘Harmless’ bugs, e.g. cosmetic errors<br />
 How to report a bug<br />
 Security-related issues<br />
 Contact the developers privately by sending an e-mail to Team@tokenpay.com with the details of the issue. Do not post the issue on github or anywhere else until the issue has been resolved.<br />
