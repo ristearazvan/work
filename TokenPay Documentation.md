@@ -782,14 +782,14 @@ Messages are signed by the keys they were sent with, this allows you to be confi
 - Compress the plain-text message with lz4 if the message is larger than 128 bytes.
 - Encrypt the payload data with AES-256-CBC, using *IV* as initialization vector, *key_e* as encryption key.
 
-Message Propagation
+# Message Propagation 
 Encrypted Messages are duplicated on every participating node in the TokenPay network – this prevents adversaries form uncovering the recipient of an encrypted message by using network traffic analysis.
 
 The messages are stored on each node for a maximum period of 48 hours, after which the message is deleted. If the recipient is absent from the network for 48 hours or more the possibility exists that they may not receive messages sent to them. It is recommended to connect to the network each day in order to prevent such an occurrence.
 
 Stored messages are grouped by time in divisions of 1 hour. The system operates on the grouped buckets of messages to save bandwidth.
 
-Synchronization of buckets between peer nodes
+# Synchronization of buckets between peer nodes 
 
 Elliptic Curve Diffie-Hellman Key Exchange P2P Messaging
 All of the messages sent and received are encrypted by the proven
@@ -809,12 +809,12 @@ network, and a copy of each encrypted message is stored on each node for
 48 hours. Following this period, the messages are permanently deleted with
 no chance of retrieval by any party
 
-Decryption
+# Decryption 
 For each incoming message a node will attempt to decode the message with every owned address contained in the nodes white-list of addresses to receive messages on.
 
 To speed up the process and allow for any payload format to be used, the Message Authentication Code (MAC) is calculated for the generated shared secret key, if it does not match the MAC provided in the message, decryption will fail and the function ends.
 
-Detailed Procedure
+# Detailed Procedure
 
 Get IV and R from the message block
 Get the private key k of the recipient used to decrypt.
@@ -828,7 +828,7 @@ Return if not equal, decryption will fail.
 Decrypt the encrypted payload with AES-256-CBC, using IV as initialization vector, key_e as decryption key.
 Decompress message portion with lz4 if message is larger than 128 bytes.
 If address and compact signature were included then verify the message Address and compact signature are not included when message is sent anonymously strip the sender's public key and add it to the public key database.
-White Paper
+# White Paper 
 White paper: View on github
 
 
