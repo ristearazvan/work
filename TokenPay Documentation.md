@@ -133,7 +133,6 @@ struggle will strike you as the most beautiful.”
 | **Proof-of-Work**    |    false    |    true    |    true    |    true    |    true    |
 | **Proof-of-Stake**   |    true    |    false    |    false    |    false    |    false    | 
 | **Bitcoin Based**    |    true    |    false    |    true    |    true    |    true    |   
-| **CryptoNote Based** |    false    |    true    |    false    |    false    |    false    |   
 
 ### Anonymity features
 
@@ -499,7 +498,6 @@ Once the stealth address has been revealed to the payer(s), it will enable the p
 The original visionaries were the creators of Bytecoin, for whom we are thankful. Their technical documentation link has been included in the references *[1]*.
 
 - The information they provide may not always apply to TokenPay.
-- Bytecoin is built on Cryptonote codebase.
 
 We would also like to thank **Peter Todd**. Peter figured out how to implement stealth addresses into Bitcoin. You can find a link to his white paper in the references *[2]*.
 He is a Bitcoin core developer and has done amazing work on Bitcoin and deserves the mention.
@@ -829,7 +827,7 @@ Decrypt the encrypted payload with AES-256-CBC, using IV as initialization vecto
 Decompress message portion with lz4 if message is larger than 128 bytes.
 If address and compact signature were included then verify the message Address and compact signature are not included when message is sent anonymously strip the sender's public key and add it to the public key database.
 # White Paper 
-White paper: View on github
+White paper: View on github [Gitbub link goes here]
 
 
 # Support
