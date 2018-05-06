@@ -782,7 +782,7 @@ Messages are signed by the keys they were sent with, this allows you to be confi
 - Compress the plain-text message with lz4 if the message is larger than 128 bytes.
 - Encrypt the payload data with AES-256-CBC, using *IV* as initialization vector, *key_e* as encryption key.
 
-# Message Propagation 
+## Message Propagation 
 Encrypted Messages are duplicated on every participating node in the TokenPay network – this prevents adversaries form uncovering the recipient of an encrypted message by using network traffic analysis.
 
 The messages are stored on each node for a maximum period of 48 hours, after which the message is deleted. If the recipient is absent from the network for 48 hours or more the possibility exists that they may not receive messages sent to them. It is recommended to connect to the network each day in order to prevent such an occurrence.
