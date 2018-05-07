@@ -1362,7 +1362,7 @@ Anything that is the result of an automated Nessus/PCI scans (too general)<br />
 DNS issues (e.g. lack of an SPF record)<br />
 SSL certificate issues<br />
 Bugs that have received mainstream tech media or community attention before the date of your disclosure.<br />
-Bug Bounties and Rewards<br />
+**Bug Bounties and Rewards**<br />
 **$3000** Deanonymize TokenPay (proof that a protocol is not anonymous)<br />
 **$1500** A flaw in the protocol that allows for theft or loss of funds<br />
 **$1000** A bug in the reference client that leads to consensus issues<br />
