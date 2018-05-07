@@ -675,13 +675,6 @@ For efficiency’s sake, when spending TokenPay, we get a list of all anonymous 
 
 Each TokenPay Token consist of a unique private key and public key, so what happens when you spend your TokenPay Token? When doing a **normal** transaction (like in Bitcoin), you would prove you received an amount of coins by pointing to the transaction that got you the coins in the first place. That's signed with the private to prove you hold the keys to the address. Now for an **anonymous** transaction that procedure is different: we do not point to previous transactions. Rather we take a pool of coins (public keys of other people their coins) that have the same value as the coin we're trying to spend and then we drop our public key. We then say "we own one of the public keys in this pool of coins", or in cryptographical terms: a ring signature.
 
-## White Paper
-
-
-
-
-
-
 # Encrypted Messaging
 ## Introduction
 
@@ -827,8 +820,7 @@ Decrypt the encrypted payload with AES-256-CBC, using IV as initialization vecto
 Decompress message portion with lz4 if message is larger than 128 bytes.
 If address and compact signature were included then verify the message Address and compact signature are not included when message is sent anonymously strip the sender's public key and add it to the public key database.
 # White Paper 
-White paper: View on github [Gitbub link goes here]
-
+- White paper: [tokenpay.com/whitepaper] (https://www.tokenpay.com/whitepaper.pdf)
 
 # Support
 For support please visit one of the links below:
