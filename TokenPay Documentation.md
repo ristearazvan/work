@@ -1346,23 +1346,40 @@ TokenPay has a series of bug bounties. Similar to the bounties offered by Mozill
 
 Depending on the type of bug and when it is reported, different bounties will be awarded. Bounties are paid out in TPAY, at the 3-day average of each to a fixed US Dollar value.<br />
 
-Things that do not qualify under the bug bounty<br />
+**Things that do not qualify under the bug bounty**<br />
+
 Bugs found on third-party/community sites, software or services, which is not due to an improper configuration issue specific to us. Please submit any potential issues to the maintainers of that site or providers of that service.<br />
+
 Vulnerabilities which are too broad or not documented properly (i.e. do not include a specific example relevant to a - TokenPay-controlled site or application).<br />
+
 Bugs or issues with a third-party site, software, or service that we use, which is not due to an improper configuration issue specific to us. Please submit any potential issues to the maintainers of that site or providers of that service.<br />
+
 Bugs and errors found in software/code that is still undergoing alpha or beta testing.<br />
+
 Usability issues<br />
+
 Anything requiring social engineering<br />
+
 DOS/DDOS attacks<br />
+
 Missing HSTS (HttpOnly flags), Secure flag, Browser Cache vulnerabilities<br />
+
 CSRF that doesn’t affect the victim<br />
+
 Referrer leakage to pages an attacker cannot control.<br />
+
 The presence of unnecessary files, e.g. for backups, when these files do not expose any sensitive information.<br />
+
 Anything that is the result of an automated Nessus/PCI scans (too general)<br />
+
 DNS issues (e.g. lack of an SPF record)<br />
+
 SSL certificate issues<br />
+
 Bugs that have received mainstream tech media or community attention before the date of your disclosure.<br />
+
 **Bug Bounties and Rewards**<br />
+
 **$3000** Deanonymize TokenPay (proof that a protocol is not anonymous)<br />
 **$1500** A flaw in the protocol that allows for theft or loss of funds<br />
 **$1000** A bug in the reference client that leads to consensus issues<br />
@@ -1370,7 +1387,8 @@ Bugs that have received mainstream tech media or community attention before the 
 **$200** A bug which causes the application to crash<br />
 **$100** Other non-harmless bugs<br />
 **$20** ‘Harmless’ bugs, e.g. cosmetic errors<br />
-How to report a bug<br />
+
+**How to report a bug**<br />
 Security-related issues<br />
 Contact the developers privately by sending an e-mail to Team@tokenpay.com with the details of the issue. Do not post the issue on github or anywhere else until the issue has been resolved.<br />
 
