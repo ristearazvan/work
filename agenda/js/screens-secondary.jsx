@@ -465,7 +465,12 @@ function AnalyticsScreen({ c, state }) {
         <div style={{ fontSize: 12, color: c.muted, marginBottom: 12, lineHeight: 1.5 }}>{T.clearDataDesc}</div>
         <button onClick={() => {
           if (window.confirm(T.clearDataConfirm)) {
-            try { localStorage.clear(); } catch (e) {}
+            try {
+              localStorage.setItem('agenda-state-v1', JSON.stringify({
+                settings: { theme: 'light' },
+                appointments: [], income: [], flagged: [],
+              }));
+            } catch (e) {}
             window.location.reload();
           }
         }} style={{

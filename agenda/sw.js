@@ -1,5 +1,5 @@
 // Agenda — offline shell service worker
-const CACHE = 'agenda-v2';
+const CACHE = 'agenda-v3';
 const ASSETS = [
   './',
   './index.html',
