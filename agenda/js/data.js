@@ -98,6 +98,11 @@ const AG_T = {
   severityAmber: 'Atenție',
   severityRed: 'Pericol',
   noFlagged: 'Nimic marcat încă',
+  // Data management
+  dataSection: 'Date',
+  clearData: 'Șterge toate datele',
+  clearDataDesc: 'Elimină toate programările, încasările și referințele de pe acest dispozitiv.',
+  clearDataConfirm: 'Ștergi toate datele? Această acțiune nu poate fi anulată.',
   // Tabs
   tabToday: 'Astăzi',
   tabCal: 'Calendar',

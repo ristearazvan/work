@@ -459,6 +459,21 @@ function AnalyticsScreen({ c, state }) {
           </div>
         ))}
       </div>
+
+      <div style={{ background: c.surface, border: `1px solid ${c.hairline}`, borderRadius: 3, padding: '16px 18px', marginTop: 14 }}>
+        <div style={{ fontSize: 10, color: c.muted, letterSpacing: 1, textTransform: 'uppercase', fontWeight: 500, marginBottom: 10 }}>{T.dataSection}</div>
+        <div style={{ fontSize: 12, color: c.muted, marginBottom: 12, lineHeight: 1.5 }}>{T.clearDataDesc}</div>
+        <button onClick={() => {
+          if (window.confirm(T.clearDataConfirm)) {
+            try { localStorage.clear(); } catch (e) {}
+            window.location.reload();
+          }
+        }} style={{
+          width: '100%', padding: '12px', border: `1px solid ${c.danger}`, background: 'transparent',
+          borderRadius: 3, fontFamily: FONTS.ui, fontSize: 12, fontWeight: 500, color: c.danger, cursor: 'pointer',
+          letterSpacing: 0.3,
+        }}>{T.clearData}</button>
+      </div>
     </div>
   );
 }
