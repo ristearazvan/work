@@ -141,6 +141,38 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
               style={inp(c, FONTS.ui, 14)} />
           </FieldBlock>
         </Section>
+
+        {/* Prices section */}
+        <Section c={c} title={T.pricesSection}>
+          <div style={{ fontSize: 11, color: c.muted, marginBottom: 14, lineHeight: 1.5 }}>{T.pricesHint}</div>
+          {(s.services || []).map(svc => {
+            const row = (s.servicePrices && s.servicePrices[svc]) || {};
+            const setPrice = (dur, val) => {
+              const next = { ...(s.servicePrices || {}) };
+              next[svc] = { ...(next[svc] || {}), [dur]: Math.max(0, Number(val) || 0) };
+              setS({ servicePrices: next });
+            };
+            return (
+              <div key={svc} style={{ marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${c.hairline2}` }}>
+                <div style={{ fontFamily: FONTS.serif, fontSize: 16, marginBottom: 10, color: c.ink }}>{svc}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {window.AG_STORE.PRICE_DURATIONS.map(dur => (
+                    <div key={dur}>
+                      <div style={{ fontSize: 10, color: c.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>
+                        {dur} {T.mins}
+                      </div>
+                      <input type="number" min="0" step="10"
+                        value={row[dur] ?? ''}
+                        placeholder="0"
+                        onChange={e => setPrice(dur, e.target.value)}
+                        style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px' }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </Section>
       </div>
     </div>
   );

@@ -195,10 +195,12 @@ function App() {
       const startHH = `${String(Math.floor(r.start_min / 60)).padStart(2, '0')}:${String(r.start_min % 60).padStart(2, '0')}`;
       const endTotal = r.start_min + r.duration_min;
       const endHH = `${String(Math.floor(endTotal / 60)).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}`;
+      const priceTable = cur.settings.servicePrices || {};
+      const rate = priceTable[r.service]?.[r.duration_min] ?? 0;
       const appt = {
         id: window.AG_STORE.uid(),
         date: r.date, time: startHH, end: endHH, duration: r.duration_min,
-        contact: r.name, service: r.service, rate: 0,
+        contact: r.name, service: r.service, rate,
         locationType: 'La mine', address: 'Apt. — principal',
         method: 'Numerar', status: 'confirmat',
         notes: (r.phone ? `Tel: ${r.phone}` : '') + (r.notes ? `\n${r.notes}` : ''),

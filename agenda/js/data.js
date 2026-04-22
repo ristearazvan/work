@@ -127,6 +127,8 @@ const AG_T = {
   mins: 'min',
   days: 'zile',
   copyToAll: 'Copiază la toate zilele',
+  pricesSection: 'Tarife',
+  pricesHint: 'Tariful aplicat automat când aprobi o cerere publică. Poți corecta în programare după.',
   syncNow: 'Sincronizează acum',
   syncedJust: 'Sincronizat',
   syncError: 'Eroare la sincronizare',
@@ -182,6 +184,15 @@ const DEFAULT_HOURS = {
   6: { open: 600, close: 1320 },
 };
 
+const PRICE_DURATIONS = [30, 60, 90, 120, 150, 180];
+
+const DEFAULT_SERVICE_PRICES = {
+  'Standard':     { 30: 300, 60: 500, 90: 700, 120: 900,  150: 1100, 180: 1300 },
+  'Extins':       { 30: 0,   60: 0,   90: 0,   120: 0,    150: 0,    180: 0 },
+  'Cină':         { 30: 0,   60: 0,   90: 0,   120: 0,    150: 0,    180: 0 },
+  'Peste noapte': { 30: 0,   60: 0,   90: 0,   120: 0,    150: 0,    180: 0 },
+};
+
 const DEFAULT_SETTINGS = {
   theme: 'light',
   workerUrl: '',
@@ -192,6 +203,7 @@ const DEFAULT_SETTINGS = {
   advanceMin: 30,
   maxDays: 7,
   services: ['Standard', 'Extins', 'Cină', 'Peste noapte'],
+  servicePrices: DEFAULT_SERVICE_PRICES,
   lastSyncAt: 0,
   lastSyncError: '',
 };
@@ -251,4 +263,4 @@ function uid() {
 }
 
 window.AG_T = AG_T;
-window.AG_STORE = { loadState, saveState, uid, SEED, DEFAULT_SETTINGS, DEFAULT_HOURS };
+window.AG_STORE = { loadState, saveState, uid, SEED, DEFAULT_SETTINGS, DEFAULT_HOURS, PRICE_DURATIONS, DEFAULT_SERVICE_PRICES };
