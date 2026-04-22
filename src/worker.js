@@ -125,11 +125,21 @@ async function checkAuth(request, env) {
 // or any pending/approved request (with buffer around both), and starting at
 // or after (now + advance_min) on today.
 // ─────────────────────────────────────────────
-function isoOf(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
+// All scheduling ("today", "now", day-of-week) is keyed to Romania local
+// time. Workers run in UTC, so we derive Bucharest-local wallclock parts via
+// Intl.DateTimeFormat and do date arithmetic over those.
+const TZ = 'Europe/Bucharest';
+function tzParts(date = new Date()) {
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TZ,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+  const p = {};
+  for (const x of fmt.formatToParts(date)) p[x.type] = x.value;
+  // Intl sometimes emits hour '24' at midnight; normalize.
+  const h = Number(p.hour) % 24;
+  return { y: Number(p.year), m: Number(p.month), d: Number(p.day), h, min: Number(p.minute) };
 }
 
 function parseHoursJson(s) {
@@ -150,12 +160,14 @@ async function computeAvailability(env) {
     return { enabled: false, days: [], services, buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays };
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // "Today" = Bucharest-local date. Represent it as a UTC-midnight Date so
+  // setUTCDate/getUTCDay arithmetic stays aligned with the wallclock date.
+  const bToday = tzParts();
+  const today = new Date(Date.UTC(bToday.y, bToday.m - 1, bToday.d));
   const windowEnd = new Date(today);
-  windowEnd.setDate(windowEnd.getDate() + maxDays);
-  const isoStart = isoOf(today);
-  const isoEnd = isoOf(windowEnd);
+  windowEnd.setUTCDate(windowEnd.getUTCDate() + maxDays);
+  const isoStart = today.toISOString().slice(0, 10);
+  const isoEnd = windowEnd.toISOString().slice(0, 10);
 
   const busyRows = await env.DB.prepare(
     'SELECT date, start_min, end_min FROM busy WHERE date >= ? AND date < ?'
@@ -173,15 +185,14 @@ async function computeAvailability(env) {
   for (const r of busyRows.results || []) add(r.date, r.start_min, r.end_min);
   for (const r of reqRows.results  || []) add(r.date, r.start_min, r.start_min + r.duration_min);
 
-  const now = new Date();
-  const earliestToday = now.getHours() * 60 + now.getMinutes() + advanceMin;
+  const earliestToday = bToday.h * 60 + bToday.min + advanceMin;
 
   const days = [];
   for (let i = 0; i < maxDays; i++) {
     const d = new Date(today);
-    d.setDate(d.getDate() + i);
-    const iso = isoOf(d);
-    const dow = d.getDay();
+    d.setUTCDate(d.getUTCDate() + i);
+    const iso = d.toISOString().slice(0, 10);
+    const dow = d.getUTCDay();
     const win = hours[String(dow)];
     if (!win) { days.push({ date: iso, dow, free: [] }); continue; }
 
