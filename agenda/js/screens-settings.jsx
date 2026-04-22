@@ -9,6 +9,7 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
   const s = state.settings;
 
   const setS = (patch) => onUpdateSettings({ ...s, ...patch });
+  const hasToken = !!(s.adminToken && s.adminToken.trim());
   const setHours = (dow, patch) => {
     const next = { ...(s.hours || {}) };
     const cur = next[dow] || { open: 600, close: 1320 };
@@ -67,9 +68,12 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
             <div style={{ fontSize: 11, color: c.muted, marginTop: 6 }}>{T.adminTokenHint}</div>
           </FieldBlock>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={onSyncNow} style={{
-              flex: 1, padding: '12px', border: 'none', background: c.accent,
-              borderRadius: 3, fontFamily: FONTS.ui, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer',
+            <button onClick={onSyncNow} disabled={!hasToken} style={{
+              flex: 1, padding: '12px', border: 'none',
+              background: hasToken ? c.accent : c.hairline,
+              borderRadius: 3, fontFamily: FONTS.ui, fontSize: 13, fontWeight: 600,
+              color: hasToken ? '#fff' : c.muted,
+              cursor: hasToken ? 'pointer' : 'not-allowed',
               letterSpacing: 0.3,
             }}>{T.syncNow}</button>
           </div>
@@ -159,9 +163,12 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
               }));
             } catch (e) {}
             window.location.reload();
-          }} style={{
-            width: '100%', padding: '12px', border: `1px solid ${c.danger}`, background: 'transparent',
-            borderRadius: 3, fontFamily: FONTS.ui, fontSize: 12, fontWeight: 500, color: c.danger, cursor: 'pointer',
+          }} disabled={!hasToken} style={{
+            width: '100%', padding: '12px',
+            border: `1px solid ${hasToken ? c.danger : c.hairline}`,
+            background: 'transparent', borderRadius: 3, fontFamily: FONTS.ui, fontSize: 12, fontWeight: 500,
+            color: hasToken ? c.danger : c.muted,
+            cursor: hasToken ? 'pointer' : 'not-allowed',
             letterSpacing: 0.3,
           }}>{T.clearData}</button>
         </Section>
