@@ -245,9 +245,9 @@ async function handlePostRequest(request, env) {
   let body;
   try { body = await request.json(); } catch { return bad('invalid_json'); }
 
-  // Honeypot: the public form includes a hidden "website" field that real
+  // Honeypot: the public form includes a hidden "hp_field" input that real
   // users never fill. Any value = bot; silently accept + discard.
-  if (body.website) return json({ id: 'ok', token: 'ok' });
+  if (body.hp_field) return json({ id: 'ok', token: 'ok' });
 
   const name = (body.name || '').toString().trim();
   const phone = (body.phone || '').toString().trim();

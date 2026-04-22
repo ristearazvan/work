@@ -204,7 +204,7 @@
           <textarea id="f-notes" maxlength="1000" placeholder="Detalii, locație preferată…">${escapeHtml(state.notes)}</textarea>
         </div>
 
-        <input class="hp" tabindex="-1" autocomplete="off" id="f-website" name="website" placeholder="Website" />
+        <input class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" id="f-hp" name="hp_field" placeholder="Leave empty" />
 
         ${state.error ? `<div class="err">${escapeHtml(state.error)}</div>` : ''}
 
@@ -233,7 +233,7 @@
     const phone = document.getElementById('f-phone');
     const service = document.getElementById('f-service');
     const notes = document.getElementById('f-notes');
-    const hp = document.getElementById('f-website');
+    const hp = document.getElementById('f-hp');
     if (name)    name.addEventListener('input',   e => { state.name = e.target.value; });
     if (phone)   phone.addEventListener('input',  e => { state.phone = e.target.value; });
     if (service) service.addEventListener('change', e => { state.service = e.target.value; });
@@ -265,7 +265,7 @@
           date: state.selectedDate,
           start_min: state.selectedStart,
           notes: state.notes.trim(),
-          website: hpVal || '',
+          hp_field: hpVal || '',
         }),
       });
       const data = await r.json();
