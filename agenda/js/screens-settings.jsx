@@ -142,6 +142,26 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
           </FieldBlock>
         </Section>
 
+        {/* Data section — destructive */}
+        <Section c={c} title={T.dataSection}>
+          <div style={{ fontSize: 12, color: c.muted, marginBottom: 12, lineHeight: 1.5 }}>{T.clearDataDesc}</div>
+          <button onClick={() => {
+            if (window.confirm(T.clearDataConfirm)) {
+              try {
+                localStorage.setItem('agenda-state-v1', JSON.stringify({
+                  settings: window.AG_STORE.DEFAULT_SETTINGS,
+                  appointments: [], income: [], flagged: [], inbox: [],
+                }));
+              } catch (e) {}
+              window.location.reload();
+            }
+          }} style={{
+            width: '100%', padding: '12px', border: `1px solid ${c.danger}`, background: 'transparent',
+            borderRadius: 3, fontFamily: FONTS.ui, fontSize: 12, fontWeight: 500, color: c.danger, cursor: 'pointer',
+            letterSpacing: 0.3,
+          }}>{T.clearData}</button>
+        </Section>
+
         {/* Prices section */}
         <Section c={c} title={T.pricesSection}>
           <div style={{ fontSize: 11, color: c.muted, marginBottom: 14, lineHeight: 1.5 }}>{T.pricesHint}</div>
