@@ -61,11 +61,6 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
 
         {/* Sync section */}
         <Section c={c} title={T.syncSection}>
-          <FieldBlock label={T.workerUrl}>
-            <input value={s.workerUrl || ''} onChange={e => setS({ workerUrl: e.target.value })}
-              placeholder={T.workerUrlPh} style={inp(c, FONTS.mono, 13)} />
-            <div style={{ fontSize: 11, color: c.muted, marginTop: 6 }}>{T.workerUrlHint}</div>
-          </FieldBlock>
           <FieldBlock label={T.adminToken}>
             <input type="password" value={s.adminToken || ''} onChange={e => setS({ adminToken: e.target.value })}
               placeholder={T.adminTokenPh} style={inp(c, FONTS.mono, 13)} autoComplete="new-password" />
