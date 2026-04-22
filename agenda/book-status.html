@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Status programare</title>
+<meta name="theme-color" content="#F5F3EE" />
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F3EE; --surface: #FFFFFF;
+    --ink: #1C1C1A; --ink2: #3A3A36; --muted: #8A867C;
+    --hair: #E5E1D8; --hair2: #EFEBE2;
+    --accent: #556B3D; --accentSoft: #EAEEE1;
+    --danger: #8B3A2E; --warn: #A67C3A;
+    --ui: 'Inter', system-ui, sans-serif; --serif: 'Fraunces', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); }
+  #app { max-width: 520px; margin: 0 auto; padding: 30px 20px; min-height: 100vh; }
+  @media (min-width: 521px) { body { background: #E5E1D8; } #app { background: var(--bg); box-shadow: 0 0 0 1px rgba(0,0,0,0.06); } }
+  .card { background: var(--surface); border: 1px solid var(--hair); border-radius: 3px; padding: 20px; margin-top: 16px; }
+  .eyebrow { font-size: 11px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; font-weight: 500; }
+  h1 { font-family: var(--serif); font-size: 30px; font-weight: 400; letter-spacing: -0.5; margin: 6px 0 0; line-height: 1.1; }
+  .row { display: flex; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--hair2); }
+  .row:first-child { border-top: none; }
+  .row .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; font-weight: 500; }
+  .row .v { font-size: 14px; color: var(--ink); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 2px; font-size: 11px; font-weight: 500;
+           letter-spacing: 0.3px; text-transform: uppercase; }
+  .b-pending  { background: #faf1e3; color: var(--warn); }
+  .b-approved { background: var(--accentSoft); color: var(--accent); }
+  .b-rejected { background: #f8eae6; color: var(--danger); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .sub { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  a.link { color: var(--accent); text-decoration: none; font-weight: 500; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="eyebrow">Status</div>
+  <h1 id="title">Se încarcă…</h1>
+  <div id="body"></div>
+</div>
+
+<script>
+(function () {
+  const DAYS = ['Dum','Lun','Mar','Mie','Joi','Vin','Sâm'];
+  const MONTHS = ['ianuarie','februarie','martie','aprilie','mai','iunie','iulie','august','septembrie','octombrie','noiembrie','decembrie'];
+  const parts = location.pathname.split('/').filter(Boolean);
+  const token = parts[parts.length - 1];
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function fmtHM(m){ return pad(Math.floor(m/60))+':'+pad(m%60); }
+  function fmtDate(iso){ const [y,m,d]=iso.split('-').map(Number); const dt=new Date(y,m-1,d); return `${DAYS[dt.getDay()]}, ${dt.getDate()} ${MONTHS[dt.getMonth()]}`; }
+  function esc(s){ return String(s).replace(/[&<>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+
+  async function load() {
+    if (!token) { document.getElementById('title').textContent = 'Link invalid'; return; }
+    try {
+      const r = await fetch('/api/requests/' + encodeURIComponent(token), { cache: 'no-store' });
+      if (r.status === 404) { document.getElementById('title').textContent = 'Cererea nu a fost găsită'; return; }
+      const data = await r.json();
+      const title = document.getElementById('title');
+      const body = document.getElementById('body');
+
+      const badgeMap = {
+        pending:  { cls: 'b-pending',  label: 'În așteptare' },
+        approved: { cls: 'b-approved', label: 'Aprobată' },
+        rejected: { cls: 'b-rejected', label: 'Respinsă' },
+      };
+      const b = badgeMap[data.status] || badgeMap.pending;
+
+      const headline = data.status === 'approved' ? 'Programare aprobată'
+                     : data.status === 'rejected' ? 'Programare respinsă'
+                     : 'Cererea a fost trimisă';
+      title.textContent = headline;
+
+      const subMap = {
+        pending:  'Vei vedea aici când va fi confirmată. Poți salva acest link pentru a reveni.',
+        approved: 'Ne vedem la ora programată.',
+        rejected: 'Acest slot nu a fost disponibil. Poți trimite o nouă cerere.',
+      };
+
+      body.innerHTML = `
+        <p class="sub">${subMap[data.status] || ''}</p>
+        <div class="card">
+          <span class="badge ${b.cls}"><span class="dot"></span>${b.label}</span>
+          <div style="margin-top:14px">
+            <div class="row"><span class="k">Nume</span><span class="v">${esc(data.name)}</span></div>
+            <div class="row"><span class="k">Serviciu</span><span class="v">${esc(data.service)}</span></div>
+            <div class="row"><span class="k">Data</span><span class="v">${fmtDate(data.date)}</span></div>
+            <div class="row"><span class="k">Ora</span><span class="v">${fmtHM(data.start_min)}–${fmtHM(data.start_min + data.duration_min)}</span></div>
+            <div class="row"><span class="k">Durată</span><span class="v">${data.duration_min} minute</span></div>
+          </div>
+        </div>
+        ${data.status === 'rejected' ? '<p class="sub" style="margin-top:18px"><a class="link" href="/book">← Trimite o cerere nouă</a></p>' : ''}
+      `;
+    } catch {
+      document.getElementById('title').textContent = 'Eroare de conexiune';
+    }
+  }
+
+  load();
+  // Refresh only while tab is visible, every 60s (rate-limit friendly).
+  setInterval(() => { if (document.visibilityState === 'visible') load(); }, 60000);
+})();
+</script>
+</body>
+</html>

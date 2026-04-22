@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────────────
 // HOME / TODAY
 // ──────────────────────────────────────────────────────────────
-function HomeScreen({ c, state, onNav, onOpenAppt }) {
+function HomeScreen({ c, state, onNav, onOpenAppt, pendingCount = 0 }) {
   const T = window.AG_T;
   const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -47,14 +47,40 @@ function HomeScreen({ c, state, onNav, onOpenAppt }) {
             {fmtShort(todayIso)}
           </div>
         </div>
-        <button onClick={() => window.dispatchEvent(new CustomEvent('agenda-toggle-theme'))} aria-label="Schimbă tema" style={{
-          width: 36, height: 36, borderRadius: '50%',
-          border: `1px solid ${c.hairline}`, background: c.surface,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-          color: c.ink2,
-        }}>
-          {c.dark ? I.bulbOn(16, c.accent) : I.bulb(16, c.ink2)}
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => onNav('inbox')} aria-label="Cereri" style={{
+            width: 36, height: 36, borderRadius: '50%',
+            border: `1px solid ${c.hairline}`, background: c.surface,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            color: c.ink2, position: 'relative',
+          }}>
+            {I.inboxIcon(16, c.ink2)}
+            {pendingCount > 0 && (
+              <span style={{
+                position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, padding: '0 4px',
+                borderRadius: 8, background: c.accent, color: '#fff',
+                fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: `0 0 0 2px ${c.bg}`, fontVariantNumeric: 'tabular-nums',
+              }}>{pendingCount > 99 ? '99+' : pendingCount}</span>
+            )}
+          </button>
+          <button onClick={() => onNav('settings')} aria-label="Setări" style={{
+            width: 36, height: 36, borderRadius: '50%',
+            border: `1px solid ${c.hairline}`, background: c.surface,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            color: c.ink2,
+          }}>
+            {I.gear(16, c.ink2)}
+          </button>
+          <button onClick={() => window.dispatchEvent(new CustomEvent('agenda-toggle-theme'))} aria-label="Schimbă tema" style={{
+            width: 36, height: 36, borderRadius: '50%',
+            border: `1px solid ${c.hairline}`, background: c.surface,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            color: c.ink2,
+          }}>
+            {c.dark ? I.bulbOn(16, c.accent) : I.bulb(16, c.ink2)}
+          </button>
+        </div>
       </div>
 
       {/* Daily summary */}

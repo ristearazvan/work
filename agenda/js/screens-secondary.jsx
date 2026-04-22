@@ -467,8 +467,8 @@ function AnalyticsScreen({ c, state }) {
           if (window.confirm(T.clearDataConfirm)) {
             try {
               localStorage.setItem('agenda-state-v1', JSON.stringify({
-                settings: { theme: 'light' },
-                appointments: [], income: [], flagged: [],
+                settings: window.AG_STORE.DEFAULT_SETTINGS,
+                appointments: [], income: [], flagged: [], inbox: [],
               }));
             } catch (e) {}
             window.location.reload();

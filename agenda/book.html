@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Programare</title>
+<meta name="description" content="Alege un slot și trimite o cerere." />
+<meta name="theme-color" content="#F5F3EE" />
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F3EE; --surface: #FFFFFF; --surface2: #FAF8F3;
+    --ink: #1C1C1A; --ink2: #3A3A36; --muted: #8A867C;
+    --hair: #E5E1D8; --hair2: #EFEBE2;
+    --accent: #556B3D; --accentSoft: #EAEEE1;
+    --danger: #8B3A2E; --warn: #A67C3A;
+    --ui: 'Inter', -apple-system, system-ui, sans-serif;
+    --serif: 'Fraunces', Georgia, serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); }
+  #app { max-width: 520px; margin: 0 auto; padding: 20px 20px 60px; min-height: 100vh; }
+  @media (min-width: 521px) { body { background: #E5E1D8; } #app { background: var(--bg); box-shadow: 0 0 0 1px rgba(0,0,0,0.06); } }
+  h1 { font-family: var(--serif); font-size: 30px; font-weight: 400; letter-spacing: -0.5; margin: 4px 0 6px; line-height: 1.1; }
+  .eyebrow { font-size: 11px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; font-weight: 500; }
+  .sub { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .card { background: var(--surface); border: 1px solid var(--hair); border-radius: 3px; padding: 16px; margin-top: 16px; }
+  .label { font-size: 10px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; margin-bottom: 8px; }
+  .field { margin-bottom: 18px; }
+  input, textarea, select {
+    width: 100%; border: 1px solid var(--hair); background: var(--surface); color: var(--ink);
+    border-radius: 3px; padding: 13px 14px; font-family: var(--ui); font-size: 15px; outline: none;
+  }
+  textarea { resize: vertical; line-height: 1.5; min-height: 80px; }
+  .days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .days::-webkit-scrollbar { display: none; }
+  .day { flex: 0 0 auto; min-width: 64px; padding: 10px 8px 12px; background: transparent; border: 1px solid var(--hair); border-radius: 2px;
+         display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; font-family: var(--ui); color: var(--ink); }
+  .day.active { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+  .day.disabled { opacity: 0.35; cursor: not-allowed; }
+  .day .dow { font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase; opacity: 0.7; }
+  .day .n { font-family: var(--serif); font-size: 20px; }
+  .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+  .slot { padding: 10px 6px; background: var(--surface); border: 1px solid var(--hair); border-radius: 2px;
+          font-family: var(--ui); font-size: 13px; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; }
+  .slot.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .slot:disabled { opacity: 0.25; cursor: not-allowed; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { flex: 1 0 60px; padding: 10px 6px; border: 1px solid var(--hair); background: var(--surface); border-radius: 3px;
+          font-family: var(--ui); font-size: 12px; color: var(--ink2); cursor: pointer; letter-spacing: 0.2px; }
+  .chip.active { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+  .chip:disabled { opacity: 0.25; cursor: not-allowed; }
+  .btn-primary { width: 100%; padding: 15px; border: none; background: var(--accent); color: #fff; border-radius: 3px;
+                 font-family: var(--ui); font-size: 15px; font-weight: 600; letter-spacing: 0.3px; cursor: pointer; margin-top: 8px; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .err { color: var(--danger); font-size: 13px; margin-top: 8px; background: #f8eae6; border-radius: 3px; padding: 10px 12px; }
+  .empty { padding: 40px 20px; text-align: center; }
+  .empty h2 { font-family: var(--serif); font-size: 18px; color: var(--ink2); font-weight: 400; margin: 0; }
+  .empty p { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .hp { position: absolute; left: -5000px; width: 1px; height: 1px; opacity: 0; }
+  .summary { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ink2); margin-top: 10px;
+             padding: 10px 12px; background: var(--accentSoft); border-radius: 2px; }
+  .summary b { font-family: var(--serif); font-weight: 500; color: var(--ink); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="eyebrow">Programare</div>
+  <h1>Alege un slot</h1>
+  <p class="sub">Completează cererea. Vei primi un link de status după trimitere.</p>
+
+  <div id="content"><div class="card"><div class="empty"><h2>Se încarcă…</h2></div></div></div>
+</div>
+
+<script>
+(function () {
+  const app = document.getElementById('content');
+  const DAYS_SHORT = ['Dum','Lun','Mar','Mie','Joi','Vin','Sâm'];
+  const MONTHS    = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Noi','Dec'];
+  const DURATIONS = [30, 45, 60, 75, 90, 105, 120, 150, 180];
+
+  const state = {
+    availability: null,
+    selectedDate: null,
+    selectedStart: null,   // minutes of day
+    duration: 60,
+    name: '', phone: '', service: '', notes: '',
+    error: '', submitting: false,
+  };
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmtHM(min) { return pad(Math.floor(min / 60)) + ':' + pad(min % 60); }
+  function parseISO(iso) { const [y,m,d] = iso.split('-').map(Number); return new Date(y, m-1, d); }
+
+  async function load() {
+    try {
+      const r = await fetch('/api/availability', { cache: 'no-store' });
+      const data = await r.json();
+      state.availability = data;
+      if (data.enabled && data.services.length) state.service = data.services[0];
+      // Pick first day that has any free slot
+      const firstWithSlots = (data.days || []).find(d => d.free && d.free.length);
+      if (firstWithSlots) state.selectedDate = firstWithSlots.date;
+      render();
+    } catch {
+      app.innerHTML = '<div class="card"><div class="empty"><h2>Nu se poate conecta</h2><p>Încearcă din nou mai târziu.</p></div></div>';
+    }
+  }
+
+  function slotsForDay(day) {
+    // Build 15-min slots from free ranges; buffer is already baked into availability.
+    const out = [];
+    if (!day || !day.free) return out;
+    for (const r of day.free) {
+      for (let t = r.start; t + state.duration <= r.end; t += 15) out.push({ start: t, end: t + state.duration });
+    }
+    return out;
+  }
+
+  function render() {
+    const d = state.availability;
+    if (!d) return;
+    if (!d.enabled) {
+      app.innerHTML = '<div class="card"><div class="empty"><h2>Programările sunt închise</h2><p>Reîncearcă mai târziu.</p></div></div>';
+      return;
+    }
+
+    const day = d.days.find(x => x.date === state.selectedDate);
+    const slots = slotsForDay(day);
+    if (state.selectedStart != null && !slots.some(s => s.start === state.selectedStart)) {
+      state.selectedStart = null;
+    }
+
+    // Limit duration: must fit in the gap starting at selectedStart, or just leave all enabled
+    const maxFromStart = (() => {
+      if (!day || state.selectedStart == null) return 180;
+      const range = day.free.find(r => state.selectedStart >= r.start && state.selectedStart < r.end);
+      return range ? range.end - state.selectedStart : 180;
+    })();
+
+    app.innerHTML = `
+      <div class="card">
+        <div class="label">Ziua</div>
+        <div class="days">
+          ${d.days.map(dd => {
+            const pd = parseISO(dd.date);
+            const disabled = !dd.free || !dd.free.length;
+            const active = dd.date === state.selectedDate;
+            return `<button class="day ${active?'active':''} ${disabled?'disabled':''}" data-date="${dd.date}" ${disabled?'disabled':''}>
+                      <span class="dow">${DAYS_SHORT[pd.getDay()]}</span>
+                      <span class="n">${pd.getDate()}</span>
+                      <span class="dow" style="opacity:0.5">${MONTHS[pd.getMonth()]}</span>
+                    </button>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">Durată</div>
+        <div class="chips">
+          ${DURATIONS.map(m => `<button class="chip ${state.duration===m?'active':''}" data-dur="${m}" ${m > maxFromStart ? 'disabled' : ''}>${m}m</button>`).join('')}
+        </div>
+
+        <div class="label" style="margin-top:16px">Ora începerii</div>
+        ${slots.length === 0
+          ? `<p class="sub" style="margin-top:0">Nu sunt sloturi disponibile în această zi cu durata aleasă.</p>`
+          : `<div class="slots">
+               ${slots.map(s => `<button class="slot ${state.selectedStart===s.start?'active':''}" data-start="${s.start}">${fmtHM(s.start)}</button>`).join('')}
+             </div>`}
+      </div>
+
+      ${state.selectedStart != null ? `
+      <div class="card">
+        <div class="summary">
+          <span>${(() => {
+            const pd = parseISO(state.selectedDate);
+            return `${DAYS_SHORT[pd.getDay()]}, ${pd.getDate()} ${MONTHS[pd.getMonth()]}`;
+          })()}</span>
+          <b>${fmtHM(state.selectedStart)}–${fmtHM(state.selectedStart + state.duration)}</b>
+        </div>
+
+        <div class="field" style="margin-top:18px">
+          <div class="label">Nume</div>
+          <input id="f-name" value="${escapeAttr(state.name)}" maxlength="80" placeholder="Nume sau inițiale" />
+        </div>
+
+        <div class="field">
+          <div class="label">Telefon</div>
+          <input id="f-phone" type="tel" value="${escapeAttr(state.phone)}" maxlength="40" placeholder="+40 7xx xxx xxx" />
+        </div>
+
+        <div class="field">
+          <div class="label">Serviciu</div>
+          <select id="f-service">
+            ${d.services.map(s => `<option value="${escapeAttr(s)}" ${s===state.service?'selected':''}>${escapeHtml(s)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label">Observații (opțional)</div>
+          <textarea id="f-notes" maxlength="1000" placeholder="Detalii, locație preferată…">${escapeHtml(state.notes)}</textarea>
+        </div>
+
+        <input class="hp" tabindex="-1" autocomplete="off" id="f-website" name="website" placeholder="Website" />
+
+        ${state.error ? `<div class="err">${escapeHtml(state.error)}</div>` : ''}
+
+        <button class="btn-primary" id="submit" ${state.submitting?'disabled':''}>${state.submitting ? 'Se trimite…' : 'Trimite cererea'}</button>
+      </div>` : ''}
+    `;
+
+    // Wire events
+    app.querySelectorAll('.day[data-date]').forEach(el => el.addEventListener('click', () => {
+      if (el.classList.contains('disabled')) return;
+      state.selectedDate = el.dataset.date;
+      state.selectedStart = null;
+      render();
+    }));
+    app.querySelectorAll('.chip[data-dur]').forEach(el => el.addEventListener('click', () => {
+      if (el.disabled) return;
+      state.duration = Number(el.dataset.dur);
+      render();
+    }));
+    app.querySelectorAll('.slot[data-start]').forEach(el => el.addEventListener('click', () => {
+      state.selectedStart = Number(el.dataset.start);
+      render();
+    }));
+
+    const name = document.getElementById('f-name');
+    const phone = document.getElementById('f-phone');
+    const service = document.getElementById('f-service');
+    const notes = document.getElementById('f-notes');
+    const hp = document.getElementById('f-website');
+    if (name)    name.addEventListener('input',   e => { state.name = e.target.value; });
+    if (phone)   phone.addEventListener('input',  e => { state.phone = e.target.value; });
+    if (service) service.addEventListener('change', e => { state.service = e.target.value; });
+    if (notes)   notes.addEventListener('input',  e => { state.notes = e.target.value; });
+    const btn = document.getElementById('submit');
+    if (btn) btn.addEventListener('click', () => submit(hp && hp.value));
+  }
+
+  function escapeHtml(s) { return String(s).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+  function escapeAttr(s) { return String(s).replace(/"/g, '&quot;').replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+
+  async function submit(hpVal) {
+    state.error = '';
+    if (!state.name.trim() || !state.phone.trim()) {
+      state.error = 'Completează numele și telefonul.';
+      return render();
+    }
+    state.submitting = true;
+    render();
+    try {
+      const r = await fetch('/api/requests', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: state.name.trim(),
+          phone: state.phone.trim(),
+          service: state.service,
+          duration_min: state.duration,
+          date: state.selectedDate,
+          start_min: state.selectedStart,
+          notes: state.notes.trim(),
+          website: hpVal || '',
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        const map = {
+          slot_unavailable: 'Slotul nu mai este disponibil. Alege altul.',
+          rate_limited: 'Prea multe cereri. Încearcă peste o oră.',
+          bookings_disabled: 'Programările sunt închise momentan.',
+          invalid_phone: 'Telefon invalid.',
+          invalid_name: 'Nume invalid.',
+        };
+        state.error = map[data.error] || 'A apărut o eroare. Încearcă din nou.';
+        state.submitting = false;
+        return render();
+      }
+      location.href = '/book/status/' + encodeURIComponent(data.token);
+    } catch {
+      state.error = 'Eroare de conexiune.';
+      state.submitting = false;
+      render();
+    }
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

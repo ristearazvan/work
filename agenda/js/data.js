@@ -103,6 +103,55 @@ const AG_T = {
   clearData: 'Șterge toate datele',
   clearDataDesc: 'Elimină toate programările, încasările și referințele de pe acest dispozitiv.',
   clearDataConfirm: 'Ștergi toate datele? Această acțiune nu poate fi anulată.',
+  // Settings
+  settings: 'Setări',
+  settingsSub: 'Configurare sincronizare și programări publice.',
+  syncSection: 'Sincronizare',
+  workerUrl: 'URL Worker',
+  workerUrlPh: 'https://domeniul-tau.workers.dev',
+  workerUrlHint: 'Lasă gol pentru a folosi aceeași origine.',
+  adminToken: 'Token administrator',
+  adminTokenPh: 'Șirul pus cu wrangler secret',
+  adminTokenHint: 'Stocat local. Setează același token pe fiecare dispozitiv.',
+  bookingSection: 'Programări publice',
+  publicEnabled: 'Permite cereri publice',
+  publicEnabledHint: 'Când e oprit, pagina publică afișează „închis".',
+  workingHours: 'Program zilnic',
+  workingHoursHint: 'Oră deschidere/închidere pe fiecare zi. Lasă gol pentru zi liberă.',
+  open: 'Deschis',
+  close: 'Închis',
+  closed: 'Liber',
+  bufferMin: 'Pauză între programări',
+  advanceMin: 'Preaviz minim',
+  maxDays: 'Zile în avans',
+  mins: 'min',
+  days: 'zile',
+  copyToAll: 'Copiază la toate zilele',
+  syncNow: 'Sincronizează acum',
+  syncedJust: 'Sincronizat',
+  syncError: 'Eroare la sincronizare',
+  syncNever: 'Nesincronizat',
+  // Inbox
+  inbox: 'Cereri',
+  inboxSub: 'Cereri publice de programare în așteptare.',
+  inboxEmpty: 'Nicio cerere nouă',
+  inboxEmptyHint: 'Cererile publice apar aici.',
+  approve: 'Aprobă',
+  reject: 'Respinge',
+  alreadyDecided: 'Deja procesată pe alt dispozitiv',
+  requestReceived: 'Primită',
+  requestFor: 'pentru',
+  newRequest: 'cerere nouă',
+  newRequestsN: 'cereri noi',
+  ago: (s) => {
+    const mins = Math.max(0, Math.floor(s / 60));
+    if (mins < 1) return 'acum';
+    if (mins < 60) return `acum ${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `acum ${hrs} h`;
+    return `acum ${Math.floor(hrs / 24)} zile`;
+  },
+  weekdayLong: ['Duminică','Luni','Marți','Miercuri','Joi','Vineri','Sâmbătă'],
   // Tabs
   tabToday: 'Astăzi',
   tabCal: 'Calendar',
@@ -123,8 +172,32 @@ function todayISO(offsetDays = 0) {
   return d.toISOString().slice(0, 10);
 }
 
+const DEFAULT_HOURS = {
+  0: null,
+  1: { open: 600, close: 1320 },
+  2: { open: 600, close: 1320 },
+  3: { open: 600, close: 1320 },
+  4: { open: 600, close: 1320 },
+  5: { open: 600, close: 1320 },
+  6: { open: 600, close: 1320 },
+};
+
+const DEFAULT_SETTINGS = {
+  theme: 'light',
+  workerUrl: '',
+  adminToken: '',
+  publicEnabled: false,
+  hours: DEFAULT_HOURS,
+  bufferMin: 15,
+  advanceMin: 30,
+  maxDays: 7,
+  services: ['Standard', 'Extins', 'Cină', 'Peste noapte'],
+  lastSyncAt: 0,
+  lastSyncError: '',
+};
+
 const SEED = {
-  settings: { theme: 'light' },
+  settings: DEFAULT_SETTINGS,
   appointments: [
     { id: 'a1', date: todayISO(0),  time: '11:00', end: '12:30', duration: 90, contact: 'M.',     service: 'Standard', rate: 400, locationType: 'La mine',   address: 'Apt. — principal', method: 'Numerar', status: 'confirmat',    notes: 'Client fidel — a 4-a vizită. Liniștit, politicos.' },
     { id: 'a2', date: todayISO(0),  time: '14:30', end: '15:30', duration: 60, contact: 'J. R.',  service: 'Standard', rate: 300, locationType: 'Deplasare', address: 'Hotel Arts',       method: 'Transfer', status: 'confirmat',    notes: 'Verificat. Prima vizită.' },
@@ -144,6 +217,7 @@ const SEED = {
     { id: 'f2', ref: '@user_****',      reason: 'Raportat — agresiv',         date: todayISO(-10), severity: 'red' },
     { id: 'f3', ref: '+40 7** *** 903', reason: 'Nu s-a prezentat × 2',       date: todayISO(-19), severity: 'amber' },
   ],
+  inbox: [],
 };
 
 // ────────────────────────────────────────────────────────────────
@@ -155,10 +229,11 @@ function loadState() {
     if (!raw) return structuredClone(SEED);
     const parsed = JSON.parse(raw);
     return {
-      settings: { ...SEED.settings, ...(parsed.settings || {}) },
+      settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}), hours: { ...DEFAULT_HOURS, ...((parsed.settings || {}).hours || {}) } },
       appointments: parsed.appointments || [],
       income: parsed.income || [],
       flagged: parsed.flagged || [],
+      inbox: parsed.inbox || [],
     };
   } catch (e) {
     return structuredClone(SEED);
@@ -176,4 +251,4 @@ function uid() {
 }
 
 window.AG_T = AG_T;
-window.AG_STORE = { loadState, saveState, uid, SEED };
+window.AG_STORE = { loadState, saveState, uid, SEED, DEFAULT_SETTINGS, DEFAULT_HOURS };

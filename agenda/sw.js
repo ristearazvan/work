@@ -1,13 +1,15 @@
 // Agenda — offline shell service worker
-const CACHE = 'agenda-v3';
+const CACHE = 'agenda-v4';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './js/data.js',
+  './js/sync.js',
   './js/primitives.jsx',
   './js/screens-main.jsx',
   './js/screens-secondary.jsx',
+  './js/screens-settings.jsx',
   './js/app.jsx',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -28,6 +30,9 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  // Never cache API responses, booking pages, or other provider origins.
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/book')) return;
   e.respondWith(
     caches.match(req).then((hit) => {
       if (hit) return hit;

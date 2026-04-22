@@ -1,14 +1,23 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "work",
+  "main": "src/worker.js",
   "compatibility_date": "2026-04-18",
   "observability": {
     "enabled": true
   },
   "assets": {
-    "directory": "agenda"
+    "directory": "agenda",
+    "binding": "ASSETS"
   },
   "compatibility_flags": [
     "nodejs_compat"
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agenda",
+      "database_id": "PLACEHOLDER_REPLACE_AFTER_WRANGLER_D1_CREATE"
+    }
   ]
 }
