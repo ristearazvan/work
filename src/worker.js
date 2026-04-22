@@ -443,6 +443,10 @@ export default {
       if (pathname.startsWith('/book/status/')) {
         return env.ASSETS.fetch(new Request(new URL('/book-status.html', url), request));
       }
+      // Root maps to the PWA shell. html_handling is disabled so we do it here.
+      if (pathname === '/' || pathname === '') {
+        return env.ASSETS.fetch(new Request(new URL('/index.html', url), request));
+      }
 
       // Everything else: static assets (the existing PWA).
       return env.ASSETS.fetch(request);
