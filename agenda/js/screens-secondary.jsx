@@ -6,7 +6,7 @@
 function NewAppointmentScreen({ c, state, editing, onCancel, onSave }) {
   const T = window.AG_T;
   window.__AG_C = c;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = isoOf(new Date());
   const nextHour = (() => {
     const d = new Date(); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1);
     return `${String(d.getHours()).padStart(2, '0')}:00`;
@@ -131,7 +131,7 @@ function NewAppointmentScreen({ c, state, editing, onCancel, onSave }) {
 function AddIncomeScreen({ c, state, onCancel, onSave }) {
   const T = window.AG_T;
   window.__AG_C = c;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = isoOf(new Date());
   const [amount, setAmount] = React.useState('');
   const [tip, setTip] = React.useState('0');
   const [method, setMethod] = React.useState('Numerar');
@@ -492,7 +492,7 @@ function FlaggedScreen({ c, state, onBack, onAdd, onRemove }) {
 
   const handleAdd = () => {
     if (!ref.trim() || !reason.trim()) return;
-    onAdd({ ref: ref.trim(), reason: reason.trim(), severity, date: new Date().toISOString().slice(0, 10) });
+    onAdd({ ref: ref.trim(), reason: reason.trim(), severity, date: isoOf(new Date()) });
     setRef(''); setReason(''); setSeverity('amber'); setAdding(false);
   };
 

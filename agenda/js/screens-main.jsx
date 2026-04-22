@@ -5,7 +5,7 @@
 // ──────────────────────────────────────────────────────────────
 function HomeScreen({ c, state, onNav, onOpenAppt, pendingCount = 0 }) {
   const T = window.AG_T;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = isoOf(new Date());
 
   const todayAppts = state.appointments
     .filter(a => a.date === todayIso && a.status !== 'anulat')
@@ -203,7 +203,7 @@ function HomeScreen({ c, state, onNav, onOpenAppt, pendingCount = 0 }) {
 // ──────────────────────────────────────────────────────────────
 function CalendarScreen({ c, state, onOpenAppt }) {
   const T = window.AG_T;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = isoOf(new Date());
   const [anchor, setAnchor] = React.useState(() => startOfWeek(new Date()));
   const [selectedIdx, setSelectedIdx] = React.useState(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
