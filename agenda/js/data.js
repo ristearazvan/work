@@ -103,6 +103,7 @@ const AG_T = {
   clearData: 'Șterge toate datele',
   clearDataDesc: 'Elimină toate programările, încasările și referințele de pe acest dispozitiv.',
   clearDataConfirm: 'Ștergi toate datele? Această acțiune nu poate fi anulată.',
+  resetRemoteFailed: 'Resetarea serverului a eșuat. Continui oricum cu ștergerea locală?',
   // Settings
   settings: 'Setări',
   settingsSub: 'Configurare sincronizare și programări publice.',

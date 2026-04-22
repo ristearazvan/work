@@ -380,6 +380,17 @@ async function handleGetInbox(request, env) {
   return json({ requests: results || [] });
 }
 
+async function handlePostReset(request, env) {
+  const auth = await checkAuth(request, env);
+  if (!auth.ok) return auth.response;
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM busy'),
+    env.DB.prepare('DELETE FROM requests'),
+    env.DB.prepare("DELETE FROM rate_limit WHERE key NOT LIKE '%:admin_auth'"),
+  ]);
+  return json({ ok: true });
+}
+
 async function handlePostDecision(request, env, id) {
   const auth = await checkAuth(request, env);
   if (!auth.ok) return auth.response;
@@ -429,6 +440,9 @@ export default {
       }
       if (pathname === '/api/inbox' && request.method === 'GET') {
         return await handleGetInbox(request, env);
+      }
+      if (pathname === '/api/reset' && request.method === 'POST') {
+        return await handlePostReset(request, env);
       }
       const decisionMatch = pathname.match(/^\/api\/requests\/([A-Za-z0-9]+)\/decision$/);
       if (decisionMatch && request.method === 'POST') {

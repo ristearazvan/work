@@ -111,8 +111,17 @@
     };
   }
 
+  async function resetRemote(settings) {
+    if (!configured(settings)) return { skipped: true };
+    return doFetch(settings, '/api/reset', {
+      method: 'POST',
+      headers: authHeaders(settings),
+      body: '{}',
+    });
+  }
+
   window.AG_SYNC = {
-    pushBusy, pushConfig, fetchInbox, decide,
+    pushBusy, pushConfig, fetchInbox, decide, resetRemote,
     configured, debounce, busyPayload, configPayload,
   };
 })();
