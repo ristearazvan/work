@@ -44,6 +44,7 @@ const BUCKETS = {
   submit_day: { limit: 10, window_s: 86400 },
   read:   { limit: 120, window_s: 3600 },
   status: { limit: 60,  window_s: 3600 },
+  admin_auth: { limit: 5, window_s: 900 },
 };
 
 async function rateLimit(env, key, bucket) {
@@ -68,6 +69,54 @@ async function rateLimit(env, key, bucket) {
     'UPDATE rate_limit SET count = count + 1 WHERE key = ?'
   ).bind(fullKey).run();
   return { ok: true };
+}
+
+// Check without consuming; used for admin auth so a valid request doesn't
+// eat into the failure budget.
+async function rateLimitPeek(env, key, bucket) {
+  const def = BUCKETS[bucket];
+  if (!def) return { ok: true };
+  const now = Math.floor(Date.now() / 1000);
+  const fullKey = `${key}:${bucket}`;
+  const row = await env.DB.prepare(
+    'SELECT window_start, count FROM rate_limit WHERE key = ?'
+  ).bind(fullKey).first();
+  if (!row || now - row.window_start >= def.window_s) return { ok: true };
+  if (row.count >= def.limit) {
+    return { ok: false, retry_after: def.window_s - (now - row.window_start) };
+  }
+  return { ok: true };
+}
+
+async function rateLimitBump(env, key, bucket) {
+  const def = BUCKETS[bucket];
+  if (!def) return;
+  const now = Math.floor(Date.now() / 1000);
+  const fullKey = `${key}:${bucket}`;
+  const row = await env.DB.prepare(
+    'SELECT window_start FROM rate_limit WHERE key = ?'
+  ).bind(fullKey).first();
+  if (!row || now - row.window_start >= def.window_s) {
+    await env.DB.prepare(
+      'INSERT INTO rate_limit (key, window_start, count) VALUES (?, ?, 1) ' +
+      'ON CONFLICT(key) DO UPDATE SET window_start = excluded.window_start, count = 1'
+    ).bind(fullKey, now).run();
+  } else {
+    await env.DB.prepare(
+      'UPDATE rate_limit SET count = count + 1 WHERE key = ?'
+    ).bind(fullKey).run();
+  }
+}
+
+// Bundled admin check: rate-limit peek → bearer check → bump on failure.
+// Returns { ok: true } or { response } with the exact 401/429 to return.
+async function checkAuth(request, env) {
+  const ih = await ipHash(request);
+  const rl = await rateLimitPeek(env, ih, 'admin_auth');
+  if (!rl.ok) return { response: json({ error: 'rate_limited', retry_after: rl.retry_after }, { status: 429 }) };
+  if (authed(request, env)) return { ok: true };
+  await rateLimitBump(env, ih, 'admin_auth');
+  return { response: bad('unauthorized', 401) };
 }
 
 // ─────────────────────────────────────────────
@@ -248,7 +297,8 @@ async function handleGetRequestStatus(request, env, token) {
 }
 
 async function handlePutConfig(request, env) {
-  if (!authed(request, env)) return bad('unauthorized', 401);
+  const auth = await checkAuth(request, env);
+  if (!auth.ok) return auth.response;
   let body;
   try { body = await request.json(); } catch { return bad('invalid_json'); }
 
@@ -291,7 +341,8 @@ async function handlePutConfig(request, env) {
 }
 
 async function handlePutBusy(request, env) {
-  if (!authed(request, env)) return bad('unauthorized', 401);
+  const auth = await checkAuth(request, env);
+  if (!auth.ok) return auth.response;
   let body;
   try { body = await request.json(); } catch { return bad('invalid_json'); }
   if (!Array.isArray(body.blocks)) return bad('invalid_blocks');
@@ -317,7 +368,8 @@ async function handlePutBusy(request, env) {
 }
 
 async function handleGetInbox(request, env) {
-  if (!authed(request, env)) return bad('unauthorized', 401);
+  const auth = await checkAuth(request, env);
+  if (!auth.ok) return auth.response;
   const { results } = await env.DB.prepare(
     `SELECT id, token, created_at, name, phone, service, duration_min, date, start_min, notes, status, decided_at
        FROM requests
@@ -329,7 +381,8 @@ async function handleGetInbox(request, env) {
 }
 
 async function handlePostDecision(request, env, id) {
-  if (!authed(request, env)) return bad('unauthorized', 401);
+  const auth = await checkAuth(request, env);
+  if (!auth.ok) return auth.response;
   let body;
   try { body = await request.json(); } catch { return bad('invalid_json'); }
   const decision = body.decision === 'approved' ? 'approved' :
