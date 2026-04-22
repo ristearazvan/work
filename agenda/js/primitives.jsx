@@ -33,7 +33,12 @@ const money = (n, sign = true) => {
 // Date helpers — all RO locale
 const T = window.AG_T;
 function parseISO(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
-function isoOf(d) { return d.toISOString().slice(0, 10); }
+function isoOf(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
 function sameDay(a, b) { return a.slice(0, 10) === b.slice(0, 10); }
 function fmtShort(iso) {
   const d = parseISO(iso);
