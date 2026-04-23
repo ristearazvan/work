@@ -289,6 +289,18 @@ function App() {
     if (to === 'inbox') refreshInbox();
   };
 
+  window.__AG_C = c;
+
+  // Not logged in → login screen only. Skip screen tree building since it
+  // dereferences state fields that are null when logged out.
+  if (!hasSession) {
+    return (
+      <div style={{ height: '100%', background: c.bg, color: c.ink, overflow: 'auto' }}>
+        <LoginScreen c={c} workerUrl={state?.settings.workerUrl || ''} onLoggedIn={handleLoggedIn} />
+      </div>
+    );
+  }
+
   let screen = null;
   if (tab === 'home')     screen = <HomeScreen c={c} state={state} onNav={nav} onOpenAppt={openAppt} pendingCount={(state.inbox || []).length} />;
   else if (tab === 'cal') screen = <CalendarScreen c={c} state={state} onOpenAppt={openAppt} />;
@@ -302,16 +314,6 @@ function App() {
 
   const hiddenTabs = ['detail', 'flagged', 'settings', 'inbox', 'new'];
   const bottomTab = hiddenTabs.includes(tab) ? null : tab === 'money' ? 'money' : tab;
-
-  window.__AG_C = c;
-
-  if (!hasSession) {
-    return (
-      <div style={{ height: '100%', background: c.bg, color: c.ink, overflow: 'auto' }}>
-        <LoginScreen c={c} workerUrl={state?.settings.workerUrl || ''} onLoggedIn={handleLoggedIn} />
-      </div>
-    );
-  }
 
   return (
     <div style={{ height: '100%', background: c.bg, color: c.ink, position: 'relative', overflow: 'hidden', transition: 'background 200ms ease, color 200ms ease' }}>
