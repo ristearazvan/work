@@ -430,7 +430,8 @@ function ServicesEditor({ c, s, setS, T }) {
                 </div>
                 <div>
                   <div style={miniLabel(c)}>{T.flatPrice} ({T.ron})</div>
-                  <input type="number" min="0" step="10" value={cfg.price ?? 0}
+                  <input type="number" inputMode="numeric" min="0" step="10"
+                    value={cfg.price ? cfg.price : ''} placeholder="0"
                     onChange={e => writeSvc(name, { ...cfg, price: Math.max(0, Number(e.target.value) || 0) })}
                     style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px' }} />
                 </div>
@@ -444,7 +445,8 @@ function ServicesEditor({ c, s, setS, T }) {
                       style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px', width: 88 }}>
                       {PRICE_DURATIONS.map(d => <option key={d} value={d}>{d} {T.mins}</option>)}
                     </select>
-                    <input type="number" min="0" step="10" value={row.price ?? 0}
+                    <input type="number" inputMode="numeric" min="0" step="10"
+                      value={row.price ? row.price : ''} placeholder="0"
                       onChange={e => setRow(name, idx, { price: Math.max(0, Number(e.target.value) || 0) })}
                       style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px', flex: 1 }} />
                     <span style={{ fontSize: 11, color: c.muted }}>{T.ron}</span>
