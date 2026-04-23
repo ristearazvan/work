@@ -121,6 +121,18 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
             <Toggle c={c} on={!!s.publicEnabled} onClick={() => setS({ publicEnabled: !s.publicEnabled })} />
           </div>
 
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '12px 0', borderBottom: `1px solid ${c.hairline2}`,
+            opacity: s.publicEnabled ? 1 : 0.4,
+          }}>
+            <div>
+              <div style={{ fontSize: 13, color: c.ink, fontWeight: 500 }}>{T.bookingsEnabled}</div>
+              <div style={{ fontSize: 11, color: c.muted, marginTop: 3 }}>{T.bookingsEnabledHint}</div>
+            </div>
+            <Toggle c={c} on={s.bookingsEnabled !== false} onClick={() => setS({ bookingsEnabled: !(s.bookingsEnabled !== false) })} />
+          </div>
+
           <FieldBlock label={T.workingHours}>
             <div style={{ fontSize: 11, color: c.muted, marginBottom: 12 }}>{T.workingHoursHint}</div>
             {[1,2,3,4,5,6,0].map(dow => {

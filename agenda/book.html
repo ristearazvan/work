@@ -69,13 +69,22 @@
   .summary { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ink2); margin-top: 10px;
              padding: 10px 12px; background: var(--accentSoft); border-radius: 2px; }
   .summary b { font-family: var(--serif); font-weight: 500; color: var(--ink); }
+  .ro-list { display: flex; flex-direction: column; }
+  .ro-row { display: flex; justify-content: space-between; align-items: baseline;
+            padding: 10px 0; border-top: 1px solid var(--hair2); font-size: 14px; }
+  .ro-row:first-child { border-top: none; }
+  .ro-day { color: var(--ink2); }
+  .ro-val { font-family: var(--serif); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .ro-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ro-chip { padding: 8px 12px; background: var(--surface2); border: 1px solid var(--hair);
+             border-radius: 2px; font-size: 13px; color: var(--ink2); }
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="eyebrow">Programare</div>
-  <h1>Alege un slot</h1>
-  <p class="sub">Completează cererea. Vei primi un link de status după trimitere.</p>
+  <div class="eyebrow" id="eyebrow">Programare</div>
+  <h1 id="heading">Alege un slot</h1>
+  <p class="sub" id="subheading">Completează cererea. Vei primi un link de status după trimitere.</p>
 
   <p class="sub" style="margin-top:10px"><a id="album-link" class="album-link" href="#" style="color:var(--accent);text-decoration:none;font-weight:500;">Vezi album →</a></p>
 
@@ -86,6 +95,7 @@
 (function () {
   const app = document.getElementById('content');
   const DAYS_SHORT = ['Dum','Lun','Mar','Mie','Joi','Vin','Sâm'];
+  const DAYS_LONG  = ['Duminică','Luni','Marți','Miercuri','Joi','Vineri','Sâmbătă'];
   const MONTHS    = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Noi','Dec'];
   const DURATIONS = [30, 60, 90, 120, 180];
 
@@ -141,11 +151,49 @@
     return out;
   }
 
+  function renderReadOnly(d) {
+    setHeader('Program', 'Program', 'Programările online nu sunt disponibile momentan.');
+    const hours = d.weekly_hours || {};
+    const services = d.services || [];
+    const hoursRows = [1,2,3,4,5,6,0].map(dow => {
+      const h = hours[String(dow)];
+      const val = (h && h.open != null && h.close != null) ? `${fmtHM(h.open)}–${fmtHM(h.close)}` : 'Închis';
+      return `<div class="ro-row"><span class="ro-day">${DAYS_LONG[dow]}</span><span class="ro-val">${val}</span></div>`;
+    }).join('');
+    const servicesHtml = services.length
+      ? services.map(s => `<span class="ro-chip">${escapeHtml(s)}</span>`).join('')
+      : `<span class="sub" style="margin:0">—</span>`;
+    app.innerHTML = `
+      <div class="card">
+        <div class="label">Program</div>
+        <div class="ro-list">${hoursRows}</div>
+      </div>
+      <div class="card">
+        <div class="label">Servicii</div>
+        <div class="ro-chips">${servicesHtml}</div>
+      </div>
+    `;
+  }
+
+  function setHeader(eyebrow, heading, sub) {
+    const e = document.getElementById('eyebrow');
+    const h = document.getElementById('heading');
+    const s = document.getElementById('subheading');
+    if (e) e.textContent = eyebrow;
+    if (h) h.textContent = heading;
+    if (s) s.textContent = sub;
+  }
+
   function render() {
     const d = state.availability;
     if (!d) return;
-    if (!d.enabled) {
+    if (d.public_enabled === false) {
+      setHeader('Programare', 'Închis', '');
       app.innerHTML = '<div class="card"><div class="empty"><h2>Programările sunt închise</h2><p>Reîncearcă mai târziu.</p></div></div>';
+      return;
+    }
+    if (d.bookings_enabled === false) {
+      renderReadOnly(d);
       return;
     }
 

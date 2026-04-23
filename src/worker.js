@@ -224,16 +224,33 @@ async function computeAvailability(env, accountId) {
   const cfg = await env.DB.prepare(
     'SELECT * FROM config WHERE account_id = ?'
   ).bind(accountId).first();
-  if (!cfg) return { enabled: false, days: [], services: [], buffer_min: 15, max_days: 7 };
+  if (!cfg) return {
+    enabled: false, public_enabled: false, bookings_enabled: false,
+    weekly_hours: {}, days: [], services: [], buffer_min: 15, advance_min: 30, max_days: 7,
+  };
 
   const hours = parseHoursJson(cfg.hours_json);
   const maxDays = cfg.max_days ?? 7;
   const bufferMin = cfg.buffer_min ?? 15;
   const advanceMin = cfg.advance_min ?? 30;
   const services = JSON.parse(cfg.services_json || '[]');
+  const publicEnabled = !!cfg.public_enabled;
+  const bookingsEnabled = cfg.bookings_enabled == null ? true : !!cfg.bookings_enabled;
 
-  if (!cfg.public_enabled) {
-    return { enabled: false, days: [], services, buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays };
+  if (!publicEnabled) {
+    return {
+      enabled: false, public_enabled: false, bookings_enabled: bookingsEnabled,
+      weekly_hours: {}, days: [], services,
+      buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays,
+    };
+  }
+
+  if (!bookingsEnabled) {
+    return {
+      enabled: false, public_enabled: true, bookings_enabled: false,
+      weekly_hours: hours, days: [], services,
+      buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays,
+    };
   }
 
   const bToday = tzParts();
@@ -299,6 +316,9 @@ async function computeAvailability(env, accountId) {
 
   return {
     enabled: true,
+    public_enabled: true,
+    bookings_enabled: true,
+    weekly_hours: hours,
     services,
     buffer_min: bufferMin,
     advance_min: advanceMin,
@@ -401,24 +421,26 @@ async function handlePutConfig(request, env) {
   const advanceMin = Math.max(0, Math.min(1440, Number(body.advance_min) ?? 30));
   const maxDays    = Math.max(1, Math.min(30,  Number(body.max_days)    ?? 7));
   const enabled    = body.public_enabled ? 1 : 0;
+  const bookingsOn = body.bookings_enabled == null ? 1 : (body.bookings_enabled ? 1 : 0);
   const services = Array.isArray(body.services) && body.services.length
     ? body.services.map(s => String(s).slice(0, 40)).slice(0, 12)
     : ['Standard', 'Extins', 'Cină', 'Peste noapte'];
 
   await env.DB.prepare(
-    `INSERT INTO config (account_id, hours_json, buffer_min, advance_min, max_days, public_enabled, services_json, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO config (account_id, hours_json, buffer_min, advance_min, max_days, public_enabled, bookings_enabled, services_json, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(account_id) DO UPDATE SET
        hours_json = excluded.hours_json,
        buffer_min = excluded.buffer_min,
        advance_min = excluded.advance_min,
        max_days = excluded.max_days,
        public_enabled = excluded.public_enabled,
+       bookings_enabled = excluded.bookings_enabled,
        services_json = excluded.services_json,
        updated_at = excluded.updated_at`
   ).bind(
     auth.account_id,
-    JSON.stringify(normalized), bufferMin, advanceMin, maxDays, enabled,
+    JSON.stringify(normalized), bufferMin, advanceMin, maxDays, enabled, bookingsOn,
     JSON.stringify(services), Math.floor(Date.now() / 1000)
   ).run();
 

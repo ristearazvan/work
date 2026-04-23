@@ -134,7 +134,7 @@ function App() {
   // Trigger debounced config push when booking settings change
   const bookingKey = state ? JSON.stringify({
     h: state.settings.hours, b: state.settings.bufferMin, a: state.settings.advanceMin,
-    d: state.settings.maxDays, e: state.settings.publicEnabled, s: state.settings.services,
+    d: state.settings.maxDays, e: state.settings.publicEnabled, bk: state.settings.bookingsEnabled, s: state.settings.services,
   }) : '';
   const firstCfgRun = React.useRef(true);
   React.useEffect(() => {

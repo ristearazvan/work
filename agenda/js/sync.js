@@ -49,6 +49,7 @@
       advance_min: settings.advanceMin ?? 30,
       max_days: settings.maxDays ?? 7,
       public_enabled: !!settings.publicEnabled,
+      bookings_enabled: settings.bookingsEnabled !== false,
       services: settings.services || [],
     };
   }
