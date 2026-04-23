@@ -251,8 +251,10 @@ function App() {
       const svcCfg = priceTable[r.service];
       let rate = 0;
       if (svcCfg) {
-        if (svcCfg.flat) rate = Number(svcCfg.price) || 0;
-        else {
+        const mode = svcCfg.mode || (svcCfg.flat === true ? 'single' : svcCfg.flat === false ? 'timed' : 'timed');
+        if (mode === 'none' || mode === 'single') {
+          rate = Number(svcCfg.price) || 0;
+        } else {
           const row = (svcCfg.rows || []).find(x => Number(x.duration) === r.duration_min);
           rate = row ? Number(row.price) || 0 : 0;
         }

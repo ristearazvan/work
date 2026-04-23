@@ -217,33 +217,33 @@ function parseHoursJson(s) {
 function normalizeServicePrices(raw) {
   const out = {};
   if (!raw || typeof raw !== 'object') return out;
+  const validDuration = d => Number.isFinite(d) && d >= 30 && d <= 180 && d % 15 === 0;
   for (const [name, v] of Object.entries(raw)) {
     if (!v || typeof v !== 'object') continue;
     const key = String(name).slice(0, 40);
-    if (v.flat === true) {
+    const mode = v.mode || (v.flat === true ? 'single' : v.flat === false ? 'timed' : null);
+    if (mode === 'none') {
+      out[key] = { mode: 'none', price: Math.max(0, Number(v.price) || 0) };
+    } else if (mode === 'single') {
       const d = Number(v.duration);
-      const p = Number(v.price);
       out[key] = {
-        flat: true,
-        duration: Number.isFinite(d) && d >= 30 && d <= 180 && d % 15 === 0 ? d : 180,
-        price: Math.max(0, Number.isFinite(p) ? p : 0),
+        mode: 'single',
+        duration: validDuration(d) ? d : 180,
+        price: Math.max(0, Number(v.price) || 0),
       };
-    } else if (Array.isArray(v.rows)) {
-      const rows = v.rows
+    } else if (mode === 'timed' || Array.isArray(v.rows)) {
+      const rows = (v.rows || [])
         .map(r => ({ duration: Number(r && r.duration), price: Number(r && r.price) }))
-        .filter(r => Number.isFinite(r.duration) && r.duration >= 30 && r.duration <= 180 && r.duration % 15 === 0)
+        .filter(r => validDuration(r.duration))
         .map(r => ({ duration: r.duration, price: Math.max(0, Number.isFinite(r.price) ? r.price : 0) }));
-      out[key] = { flat: false, rows };
+      out[key] = { mode: 'timed', rows };
     } else {
-      // Legacy flat map: { "30": 300, "60": 500, ... }
       const rows = [];
       for (const [dur, price] of Object.entries(v)) {
         const d = Number(dur);
-        if (Number.isFinite(d) && d >= 30 && d <= 180 && d % 15 === 0) {
-          rows.push({ duration: d, price: Math.max(0, Number(price) || 0) });
-        }
+        if (validDuration(d)) rows.push({ duration: d, price: Math.max(0, Number(price) || 0) });
       }
-      out[key] = { flat: false, rows };
+      out[key] = { mode: 'timed', rows };
     }
   }
   return out;

@@ -353,29 +353,46 @@ function ServicesEditor({ c, s, setS, T }) {
     setS({ servicePrices: next });
   };
 
-  const setFlat = (name, flat) => {
-    const cur = prices[name] || { flat: false, rows: [] };
-    if (flat) {
-      const row = (cur.rows || [])[0];
-      writeSvc(name, { flat: true, duration: row?.duration || 180, price: row?.price || 0 });
+  const firstPrice = (cur) => {
+    if (!cur) return 0;
+    if (cur.mode === 'none' || cur.mode === 'single') return cur.price || 0;
+    const row = (cur.rows || [])[0];
+    return row ? row.price : 0;
+  };
+
+  const setMode = (name, mode) => {
+    const cur = prices[name] || { mode: 'timed', rows: [] };
+    if (cur.mode === mode) return;
+    if (mode === 'none') {
+      writeSvc(name, { mode: 'none', price: firstPrice(cur) });
+    } else if (mode === 'single') {
+      const row0 = (cur.rows || [])[0];
+      writeSvc(name, {
+        mode: 'single',
+        duration: cur.duration || row0?.duration || 180,
+        price: firstPrice(cur),
+      });
     } else {
-      writeSvc(name, { flat: false, rows: cur.duration ? [{ duration: cur.duration, price: cur.price || 0 }] : [] });
+      const rows = (cur.mode === 'single' && cur.duration != null)
+        ? [{ duration: cur.duration, price: cur.price || 0 }]
+        : (cur.rows || []);
+      writeSvc(name, { mode: 'timed', rows });
     }
   };
 
   const setRow = (name, idx, patch) => {
-    const cur = prices[name] || { flat: false, rows: [] };
+    const cur = prices[name] || { mode: 'timed', rows: [] };
     const rows = (cur.rows || []).map((r, i) => i === idx ? { ...r, ...patch } : r);
     writeSvc(name, { ...cur, rows });
   };
 
   const removeRow = (name, idx) => {
-    const cur = prices[name] || { flat: false, rows: [] };
+    const cur = prices[name] || { mode: 'timed', rows: [] };
     writeSvc(name, { ...cur, rows: (cur.rows || []).filter((_, i) => i !== idx) });
   };
 
   const addRow = (name) => {
-    const cur = prices[name] || { flat: false, rows: [] };
+    const cur = prices[name] || { mode: 'timed', rows: [] };
     const used = new Set((cur.rows || []).map(r => r.duration));
     const next = PRICE_DURATIONS.find(d => !used.has(d));
     if (next == null) return;
@@ -390,7 +407,7 @@ function ServicesEditor({ c, s, setS, T }) {
     setError('');
     setNewName('');
     const nextServices = [...services, name];
-    const nextPrices = { ...prices, [name]: { flat: false, rows: [] } };
+    const nextPrices = { ...prices, [name]: { mode: 'timed', rows: [] } };
     setS({ services: nextServices, servicePrices: nextPrices });
   };
 
@@ -404,21 +421,35 @@ function ServicesEditor({ c, s, setS, T }) {
   return (
     <div>
       {services.map(name => {
-        const cfg = prices[name] || { flat: false, rows: [] };
+        const cfg = prices[name] || { mode: 'timed', rows: [] };
+        const mode = cfg.mode || 'timed';
         const usedCount = (cfg.rows || []).length;
         return (
           <div key={name} style={{ marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${c.hairline2}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <div style={{ fontFamily: FONTS.serif, fontSize: 16, color: c.ink, flex: 1 }}>{name}</div>
-              <button onClick={() => setFlat(name, false)} style={segBtn(c, !cfg.flat)} title={T.serviceTimed}>{T.serviceTimed}</button>
-              <button onClick={() => setFlat(name, true)} style={segBtn(c, !!cfg.flat)} title={T.serviceFlat}>{T.serviceFlat}</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+              <div style={{ fontFamily: FONTS.serif, fontSize: 16, color: c.ink, flex: '1 1 100%', marginBottom: 4 }}>{name}</div>
+              <div style={{ display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap' }}>
+                <button onClick={() => setMode(name, 'timed')} style={segBtn(c, mode === 'timed')}>{T.serviceModeTimed}</button>
+                <button onClick={() => setMode(name, 'single')} style={segBtn(c, mode === 'single')}>{T.serviceModeSingle}</button>
+                <button onClick={() => setMode(name, 'none')} style={segBtn(c, mode === 'none')}>{T.serviceModeNone}</button>
+              </div>
               <button onClick={() => removeService(name)} style={{
                 padding: '6px 10px', border: `1px solid ${c.hairline}`, background: 'transparent',
                 borderRadius: 2, fontFamily: FONTS.ui, fontSize: 11, color: c.danger, cursor: 'pointer',
               }}>✕</button>
             </div>
 
-            {cfg.flat ? (
+            {mode === 'none' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+                <div>
+                  <div style={miniLabel(c)}>{T.flatPrice} ({T.ron})</div>
+                  <input type="number" inputMode="numeric" min="0" step="10"
+                    value={cfg.price ? cfg.price : ''} placeholder="0"
+                    onChange={e => writeSvc(name, { ...cfg, price: Math.max(0, Number(e.target.value) || 0) })}
+                    style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px' }} />
+                </div>
+              </div>
+            ) : mode === 'single' ? (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <div>
                   <div style={miniLabel(c)}>{T.flatDuration}</div>
@@ -448,7 +479,7 @@ function ServicesEditor({ c, s, setS, T }) {
                     <input type="number" inputMode="numeric" min="0" step="10"
                       value={row.price ? row.price : ''} placeholder="0"
                       onChange={e => setRow(name, idx, { price: Math.max(0, Number(e.target.value) || 0) })}
-                      style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px', flex: 1 }} />
+                      style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px', flex: 1, minWidth: 0 }} />
                     <span style={{ fontSize: 11, color: c.muted }}>{T.ron}</span>
                     <button onClick={() => removeRow(name, idx)} style={{
                       padding: '6px 10px', border: `1px solid ${c.hairline}`, background: 'transparent',

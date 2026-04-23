@@ -159,25 +159,44 @@
     }
   }
 
+  function svcMode(d, svcName) {
+    const cfg = (d.service_prices || {})[svcName];
+    if (!cfg) return 'timed';
+    if (cfg.mode) return cfg.mode;
+    if (cfg.flat === true) return 'single';
+    if (Array.isArray(cfg.rows)) return 'timed';
+    return 'timed';
+  }
+
   function priceFor(d, svcName, duration) {
     const cfg = (d.service_prices || {})[svcName];
     if (!cfg) return null;
-    if (cfg.flat) return cfg.price;
+    const mode = svcMode(d, svcName);
+    if (mode === 'none' || mode === 'single') return cfg.price;
     const row = (cfg.rows || []).find(r => r.duration === duration);
     return row ? row.price : null;
   }
 
-  function serviceIsFlat(d, svcName) {
-    const cfg = (d.service_prices || {})[svcName];
-    return !!(cfg && cfg.flat);
+  function serviceIsSingle(d, svcName) {
+    return svcMode(d, svcName) === 'single';
+  }
+
+  function serviceIsBookable(d, svcName) {
+    return svcMode(d, svcName) !== 'none';
   }
 
   function allowedDurations(d, svcName) {
     const cfg = (d.service_prices || {})[svcName];
+    const mode = svcMode(d, svcName);
+    if (mode === 'none') return [];
     if (!cfg) return DURATIONS;
-    if (cfg.flat) return [cfg.duration || 180];
+    if (mode === 'single') return [cfg.duration || 180];
     const rows = (cfg.rows || []).map(r => r.duration).filter((v, i, a) => a.indexOf(v) === i).sort((a,b) => a-b);
     return rows.length ? rows : DURATIONS;
+  }
+
+  function bookableServices(d) {
+    return (d.services || []).filter(s => serviceIsBookable(d, s));
   }
 
   function fmtRon(v) { return `${Number(v || 0)} RON`; }
@@ -205,8 +224,9 @@
       const data = await r.json();
       state.availability = data;
       renderAlbumCta(data);
-      if (data.enabled && data.services.length) {
-        state.service = data.services[0];
+      const bookable = bookableServices(data);
+      if (data.enabled && bookable.length) {
+        state.service = bookable[0];
         const durs = allowedDurations(data, state.service);
         if (!durs.includes(state.duration)) state.duration = durs[0] || 60;
       }
@@ -256,10 +276,14 @@
   function renderServiceBlock(d, svc) {
     const cfg = (d.service_prices || {})[svc];
     const name = `<div class="svc-name">${escapeHtml(svc)}</div>`;
+    const mode = svcMode(d, svc);
     if (!cfg) return `<div class="svc-block">${name}<div class="sub" style="margin:0">—</div></div>`;
-    if (cfg.flat) {
-      const dur = cfg.duration ? ` <span class="sub" style="margin:0">· ${cfg.duration}m</span>` : '';
-      return `<div class="svc-block">${name}<div class="svc-flat"><span>Tarif${dur ? '' : ''}</span><b>${fmtRon(cfg.price)}</b></div></div>`;
+    if (mode === 'none') {
+      return `<div class="svc-block">${name}<div class="svc-flat"><span>Tarif</span><b>${fmtRon(cfg.price)}</b></div></div>`;
+    }
+    if (mode === 'single') {
+      const dur = cfg.duration ? `<span class="sub" style="margin:0">${cfg.duration} min</span>` : `<span>Tarif</span>`;
+      return `<div class="svc-block">${name}<div class="svc-flat">${dur}<b>${fmtRon(cfg.price)}</b></div></div>`;
     }
     const rows = (cfg.rows || []).filter(r => r.price > 0);
     if (!rows.length) return `<div class="svc-block">${name}<div class="sub" style="margin:0">—</div></div>`;
@@ -293,7 +317,8 @@
 
     const durs = allowedDurations(d, state.service);
     if (!durs.includes(state.duration)) state.duration = durs[0] || 60;
-    const isFlat = serviceIsFlat(d, state.service);
+    const isSingle = serviceIsSingle(d, state.service);
+    const bookable = bookableServices(d);
 
     const day = d.days.find(x => x.date === state.selectedDate);
     const slots = slotsForDay(day);
@@ -328,7 +353,7 @@
       </div>
 
       <div class="card">
-        ${isFlat ? '' : `
+        ${isSingle ? '' : `
           <div class="label">Durată</div>
           <div class="chips">
             ${durs.map(m => {
@@ -339,7 +364,7 @@
           </div>
           <div class="label" style="margin-top:16px">Ora începerii</div>
         `}
-        ${isFlat ? `<div class="label">Ora începerii</div>` : ''}
+        ${isSingle ? `<div class="label">Ora începerii</div>` : ''}
         ${slots.length === 0
           ? `<p class="sub" style="margin-top:0">Nu sunt sloturi disponibile în această zi cu durata aleasă.</p>`
           : `<div class="slots">
@@ -371,7 +396,7 @@
         <div class="field">
           <div class="label">Serviciu</div>
           <select id="f-service">
-            ${d.services.map(s => `<option value="${escapeAttr(s)}" ${s===state.service?'selected':''}>${escapeHtml(s)}</option>`).join('')}
+            ${bookable.map(s => `<option value="${escapeAttr(s)}" ${s===state.service?'selected':''}>${escapeHtml(s)}</option>`).join('')}
           </select>
         </div>
 
@@ -416,7 +441,7 @@
       state.service = e.target.value;
       const d2 = state.availability;
       const nextDurs = allowedDurations(d2, state.service);
-      if (serviceIsFlat(d2, state.service)) {
+      if (serviceIsSingle(d2, state.service)) {
         state.duration = nextDurs[0];
       } else if (!nextDurs.includes(state.duration)) {
         state.duration = nextDurs[0] || 60;
