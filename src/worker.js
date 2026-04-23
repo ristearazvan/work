@@ -214,6 +214,59 @@ function parseHoursJson(s) {
   try { return JSON.parse(s) || {}; } catch { return {}; }
 }
 
+function normalizeServicePrices(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [name, v] of Object.entries(raw)) {
+    if (!v || typeof v !== 'object') continue;
+    const key = String(name).slice(0, 40);
+    if (v.flat === true) {
+      const d = Number(v.duration);
+      const p = Number(v.price);
+      out[key] = {
+        flat: true,
+        duration: Number.isFinite(d) && d >= 30 && d <= 180 && d % 15 === 0 ? d : 180,
+        price: Math.max(0, Number.isFinite(p) ? p : 0),
+      };
+    } else if (Array.isArray(v.rows)) {
+      const rows = v.rows
+        .map(r => ({ duration: Number(r && r.duration), price: Number(r && r.price) }))
+        .filter(r => Number.isFinite(r.duration) && r.duration >= 30 && r.duration <= 180 && r.duration % 15 === 0)
+        .map(r => ({ duration: r.duration, price: Math.max(0, Number.isFinite(r.price) ? r.price : 0) }));
+      out[key] = { flat: false, rows };
+    } else {
+      // Legacy flat map: { "30": 300, "60": 500, ... }
+      const rows = [];
+      for (const [dur, price] of Object.entries(v)) {
+        const d = Number(dur);
+        if (Number.isFinite(d) && d >= 30 && d <= 180 && d % 15 === 0) {
+          rows.push({ duration: d, price: Math.max(0, Number(price) || 0) });
+        }
+      }
+      out[key] = { flat: false, rows };
+    }
+  }
+  return out;
+}
+
+function parseServicePricesJson(s) {
+  if (!s) return {};
+  try { return normalizeServicePrices(JSON.parse(s)); } catch { return {}; }
+}
+
+async function mediaSummary(env, accountId) {
+  const row = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM media WHERE account_id = ?`
+  ).bind(accountId).first();
+  const count = row?.n || 0;
+  if (!count) return { count: 0, thumb_id: null };
+  const thumb = await env.DB.prepare(
+    `SELECT id FROM media WHERE account_id = ?
+      ORDER BY display_order ASC, uploaded_at DESC LIMIT 1`
+  ).bind(accountId).first();
+  return { count, thumb_id: thumb?.id || null };
+}
+
 async function resolveSlug(env, slug) {
   if (!SLUG_RE.test(slug)) return null;
   const row = await env.DB.prepare('SELECT id FROM accounts WHERE slug = ?').bind(slug).first();
@@ -226,7 +279,9 @@ async function computeAvailability(env, accountId) {
   ).bind(accountId).first();
   if (!cfg) return {
     enabled: false, public_enabled: false, bookings_enabled: false,
-    weekly_hours: {}, days: [], services: [], buffer_min: 15, advance_min: 30, max_days: 7,
+    page_title: '', weekly_hours: {}, days: [], services: [], service_prices: {},
+    media_count: 0, album_thumb_id: null,
+    buffer_min: 15, advance_min: 30, max_days: 7,
   };
 
   const hours = parseHoursJson(cfg.hours_json);
@@ -234,21 +289,27 @@ async function computeAvailability(env, accountId) {
   const bufferMin = cfg.buffer_min ?? 15;
   const advanceMin = cfg.advance_min ?? 30;
   const services = JSON.parse(cfg.services_json || '[]');
+  const servicePrices = parseServicePricesJson(cfg.service_prices_json);
+  const pageTitle = (cfg.page_title || '').toString().trim().slice(0, 60);
   const publicEnabled = !!cfg.public_enabled;
   const bookingsEnabled = cfg.bookings_enabled == null ? true : !!cfg.bookings_enabled;
 
   if (!publicEnabled) {
     return {
       enabled: false, public_enabled: false, bookings_enabled: bookingsEnabled,
-      weekly_hours: {}, days: [], services,
+      page_title: pageTitle, weekly_hours: {}, days: [], services, service_prices: servicePrices,
+      media_count: 0, album_thumb_id: null,
       buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays,
     };
   }
 
+  const media = await mediaSummary(env, accountId);
+
   if (!bookingsEnabled) {
     return {
       enabled: false, public_enabled: true, bookings_enabled: false,
-      weekly_hours: hours, days: [], services,
+      page_title: pageTitle, weekly_hours: hours, days: [], services, service_prices: servicePrices,
+      media_count: media.count, album_thumb_id: media.thumb_id,
       buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays,
     };
   }
@@ -318,8 +379,12 @@ async function computeAvailability(env, accountId) {
     enabled: true,
     public_enabled: true,
     bookings_enabled: true,
+    page_title: pageTitle,
     weekly_hours: hours,
     services,
+    service_prices: servicePrices,
+    media_count: media.count,
+    album_thumb_id: media.thumb_id,
     buffer_min: bufferMin,
     advance_min: advanceMin,
     max_days: maxDays,
@@ -425,10 +490,14 @@ async function handlePutConfig(request, env) {
   const services = Array.isArray(body.services) && body.services.length
     ? body.services.map(s => String(s).slice(0, 40)).slice(0, 12)
     : ['Standard', 'Extins', 'Cină', 'Peste noapte'];
+  const pageTitle = (body.page_title || '').toString().trim().slice(0, 60) || null;
+  const servicePrices = normalizeServicePrices(body.service_prices);
 
   await env.DB.prepare(
-    `INSERT INTO config (account_id, hours_json, buffer_min, advance_min, max_days, public_enabled, bookings_enabled, services_json, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO config (account_id, hours_json, buffer_min, advance_min, max_days,
+                         public_enabled, bookings_enabled, services_json,
+                         page_title, service_prices_json, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(account_id) DO UPDATE SET
        hours_json = excluded.hours_json,
        buffer_min = excluded.buffer_min,
@@ -437,11 +506,14 @@ async function handlePutConfig(request, env) {
        public_enabled = excluded.public_enabled,
        bookings_enabled = excluded.bookings_enabled,
        services_json = excluded.services_json,
+       page_title = excluded.page_title,
+       service_prices_json = excluded.service_prices_json,
        updated_at = excluded.updated_at`
   ).bind(
     auth.account_id,
     JSON.stringify(normalized), bufferMin, advanceMin, maxDays, enabled, bookingsOn,
-    JSON.stringify(services), Math.floor(Date.now() / 1000)
+    JSON.stringify(services), pageTitle, JSON.stringify(servicePrices),
+    Math.floor(Date.now() / 1000)
   ).run();
 
   return json({ ok: true });

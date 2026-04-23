@@ -135,6 +135,7 @@ function App() {
   const bookingKey = state ? JSON.stringify({
     h: state.settings.hours, b: state.settings.bufferMin, a: state.settings.advanceMin,
     d: state.settings.maxDays, e: state.settings.publicEnabled, bk: state.settings.bookingsEnabled, s: state.settings.services,
+    pt: state.settings.pageTitle, sp: state.settings.servicePrices,
   }) : '';
   const firstCfgRun = React.useRef(true);
   React.useEffect(() => {
@@ -247,7 +248,15 @@ function App() {
       const endTotal = r.start_min + r.duration_min;
       const endHH = `${String(Math.floor(endTotal / 60)).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}`;
       const priceTable = cur.settings.servicePrices || {};
-      const rate = priceTable[r.service]?.[r.duration_min] ?? 0;
+      const svcCfg = priceTable[r.service];
+      let rate = 0;
+      if (svcCfg) {
+        if (svcCfg.flat) rate = Number(svcCfg.price) || 0;
+        else {
+          const row = (svcCfg.rows || []).find(x => Number(x.duration) === r.duration_min);
+          rate = row ? Number(row.price) || 0 : 0;
+        }
+      }
       const appt = {
         id: window.AG_STORE.uid(),
         date: r.date, time: startHH, end: endHH, duration: r.duration_min,

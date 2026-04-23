@@ -51,6 +51,8 @@
       public_enabled: !!settings.publicEnabled,
       bookings_enabled: settings.bookingsEnabled !== false,
       services: settings.services || [],
+      page_title: (settings.pageTitle || '').toString(),
+      service_prices: settings.servicePrices || {},
     };
   }
 

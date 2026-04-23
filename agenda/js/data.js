@@ -157,6 +157,22 @@ const AG_T = {
   publicEnabledHint: 'Când e oprit, pagina publică afișează „închis".',
   bookingsEnabled: 'Acceptă cereri de programare',
   bookingsEnabledHint: 'Când e oprit, pagina publică rămâne vizibilă, dar nu se pot trimite cereri.',
+  pageTitle: 'Titlu pagină',
+  pageTitleHint: 'Textul afișat ca titlu pe pagina publică. Lasă gol pentru „Program".',
+  pageTitlePlaceholder: 'Program',
+  servicesSection: 'Servicii',
+  servicesHint: 'Adaugă, șterge sau editează tarifele pe durată.',
+  serviceFlat: 'Fără durată (preț unic)',
+  serviceTimed: 'Pe durată',
+  addService: 'Adaugă serviciu',
+  addServicePlaceholder: 'Nume serviciu',
+  addDuration: 'Adaugă durată',
+  removeService: 'Șterge',
+  ron: 'RON',
+  flatDuration: 'Durată (min)',
+  flatPrice: 'Preț',
+  duplicateService: 'Serviciul există deja.',
+  invalidServiceName: 'Nume invalid.',
   workingHours: 'Program zilnic',
   workingHoursHint: 'Oră deschidere/închidere pe fiecare zi. Lasă gol pentru zi liberă.',
   open: 'Deschis',
@@ -168,8 +184,6 @@ const AG_T = {
   mins: 'min',
   days: 'zile',
   copyToAll: 'Copiază la toate zilele',
-  pricesSection: 'Tarife',
-  pricesHint: 'Tariful aplicat automat când aprobi o cerere publică. Poți corecta în programare după.',
   syncNow: 'Sincronizează acum',
   syncedJust: 'Sincronizat',
   syncError: 'Eroare la sincronizare',
@@ -230,12 +244,53 @@ const DEFAULT_HOURS = {
 
 const PRICE_DURATIONS = [30, 60, 90, 120, 180];
 
+function _rowsFor(defaults) {
+  return PRICE_DURATIONS.map(d => ({ duration: d, price: defaults[d] ?? 0 }));
+}
+
 const DEFAULT_SERVICE_PRICES = {
-  'Standard':     { 30: 300, 60: 500, 90: 700, 120: 900, 180: 1300 },
-  'Extins':       { 30: 0,   60: 0,   90: 0,   120: 0,   180: 0 },
-  'Cină':         { 30: 0,   60: 0,   90: 0,   120: 0,   180: 0 },
-  'Peste noapte': { 30: 0,   60: 0,   90: 0,   120: 0,   180: 0 },
+  'Standard':     { flat: false, rows: _rowsFor({ 30: 300, 60: 500, 90: 700, 120: 900, 180: 1300 }) },
+  'Extins':       { flat: false, rows: _rowsFor({}) },
+  'Cină':         { flat: false, rows: _rowsFor({}) },
+  'Peste noapte': { flat: false, rows: _rowsFor({}) },
 };
+
+// Coerce stored shapes (including legacy { "30": 300, ... } maps) into the
+// canonical { flat, rows | duration/price } shape the UI and worker expect.
+function normalizeServicePrices(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [name, v] of Object.entries(raw)) {
+    if (!v || typeof v !== 'object') continue;
+    const key = String(name).slice(0, 40);
+    if (v.flat === true) {
+      const d = Number(v.duration);
+      const p = Number(v.price);
+      out[key] = {
+        flat: true,
+        duration: Number.isFinite(d) && d >= 30 && d <= 180 && d % 15 === 0 ? d : 180,
+        price: Math.max(0, Number.isFinite(p) ? p : 0),
+      };
+    } else if (Array.isArray(v.rows)) {
+      const rows = v.rows
+        .map(r => ({ duration: Number(r && r.duration), price: Number(r && r.price) }))
+        .filter(r => Number.isFinite(r.duration) && r.duration >= 30 && r.duration <= 180 && r.duration % 15 === 0)
+        .map(r => ({ duration: r.duration, price: Math.max(0, Number.isFinite(r.price) ? r.price : 0) }));
+      out[key] = { flat: false, rows };
+    } else {
+      const rows = [];
+      for (const [dur, price] of Object.entries(v)) {
+        const d = Number(dur);
+        if (Number.isFinite(d) && d >= 30 && d <= 180 && d % 15 === 0) {
+          rows.push({ duration: d, price: Math.max(0, Number(price) || 0) });
+        }
+      }
+      rows.sort((a, b) => a.duration - b.duration);
+      out[key] = { flat: false, rows };
+    }
+  }
+  return out;
+}
 
 const DEFAULT_SETTINGS = {
   theme: 'light',
@@ -246,6 +301,7 @@ const DEFAULT_SETTINGS = {
   slug: '',
   publicEnabled: false,
   bookingsEnabled: true,
+  pageTitle: '',
   hours: DEFAULT_HOURS,
   bufferMin: 15,
   advanceMin: 30,
@@ -295,7 +351,11 @@ function loadStateFor(slug) {
     if (!raw) return structuredClone(SEED);
     const parsed = JSON.parse(raw);
     return {
-      settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}), hours: { ...DEFAULT_HOURS, ...((parsed.settings || {}).hours || {}) } },
+      settings: (() => {
+        const merged = { ...DEFAULT_SETTINGS, ...(parsed.settings || {}), hours: { ...DEFAULT_HOURS, ...((parsed.settings || {}).hours || {}) } };
+        merged.servicePrices = normalizeServicePrices(merged.servicePrices);
+        return merged;
+      })(),
       appointments: parsed.appointments || [],
       income: parsed.income || [],
       flagged: parsed.flagged || [],
@@ -326,5 +386,6 @@ window.AG_STORE = {
   loadSession, saveSession, clearSession,
   loadStateFor, saveStateFor,
   uid, SEED, DEFAULT_SETTINGS, DEFAULT_HOURS, PRICE_DURATIONS, DEFAULT_SERVICE_PRICES,
+  normalizeServicePrices,
   SESSION_FIELDS,
 };

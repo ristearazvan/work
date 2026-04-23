@@ -133,6 +133,13 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
             <Toggle c={c} on={s.bookingsEnabled !== false} onClick={() => setS({ bookingsEnabled: !(s.bookingsEnabled !== false) })} />
           </div>
 
+          <FieldBlock label={T.pageTitle}>
+            <input type="text" maxLength={60} value={s.pageTitle || ''} placeholder={T.pageTitlePlaceholder}
+              onChange={e => setS({ pageTitle: e.target.value.slice(0, 60) })}
+              style={inp(c, FONTS.ui, 14)} />
+            <div style={{ fontSize: 11, color: c.muted, marginTop: 6 }}>{T.pageTitleHint}</div>
+          </FieldBlock>
+
           <FieldBlock label={T.workingHours}>
             <div style={{ fontSize: 11, color: c.muted, marginBottom: 12 }}>{T.workingHoursHint}</div>
             {[1,2,3,4,5,6,0].map(dow => {
@@ -211,36 +218,10 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
           }}>{T.clearData}</button>
         </Section>
 
-        {/* Prices section */}
-        <Section c={c} title={T.pricesSection}>
-          <div style={{ fontSize: 11, color: c.muted, marginBottom: 14, lineHeight: 1.5 }}>{T.pricesHint}</div>
-          {(s.services || []).map(svc => {
-            const row = (s.servicePrices && s.servicePrices[svc]) || {};
-            const setPrice = (dur, val) => {
-              const next = { ...(s.servicePrices || {}) };
-              next[svc] = { ...(next[svc] || {}), [dur]: Math.max(0, Number(val) || 0) };
-              setS({ servicePrices: next });
-            };
-            return (
-              <div key={svc} style={{ marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${c.hairline2}` }}>
-                <div style={{ fontFamily: FONTS.serif, fontSize: 16, marginBottom: 10, color: c.ink }}>{svc}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {window.AG_STORE.PRICE_DURATIONS.map(dur => (
-                    <div key={dur}>
-                      <div style={{ fontSize: 10, color: c.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>
-                        {dur} {T.mins}
-                      </div>
-                      <input type="number" min="0" step="10"
-                        value={row[dur] ?? ''}
-                        placeholder="0"
-                        onChange={e => setPrice(dur, e.target.value)}
-                        style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px' }} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+        {/* Services section — names, flat/timed, per-duration prices */}
+        <Section c={c} title={T.servicesSection}>
+          <div style={{ fontSize: 11, color: c.muted, marginBottom: 14, lineHeight: 1.5 }}>{T.servicesHint}</div>
+          <ServicesEditor c={c} s={s} setS={setS} T={T} />
         </Section>
       </div>
     </div>
@@ -357,6 +338,161 @@ function InboxScreen({ c, state, onBack, onRefresh, onApprove, onReject, refresh
       </div>
     </div>
   );
+}
+
+function ServicesEditor({ c, s, setS, T }) {
+  const PRICE_DURATIONS = window.AG_STORE.PRICE_DURATIONS;
+  const services = s.services || [];
+  const prices = s.servicePrices || {};
+  const [newName, setNewName] = React.useState('');
+  const [error, setError] = React.useState('');
+
+  const writeSvc = (name, cfg) => {
+    const next = { ...prices };
+    next[name] = cfg;
+    setS({ servicePrices: next });
+  };
+
+  const setFlat = (name, flat) => {
+    const cur = prices[name] || { flat: false, rows: [] };
+    if (flat) {
+      const row = (cur.rows || [])[0];
+      writeSvc(name, { flat: true, duration: row?.duration || 180, price: row?.price || 0 });
+    } else {
+      writeSvc(name, { flat: false, rows: cur.duration ? [{ duration: cur.duration, price: cur.price || 0 }] : [] });
+    }
+  };
+
+  const setRow = (name, idx, patch) => {
+    const cur = prices[name] || { flat: false, rows: [] };
+    const rows = (cur.rows || []).map((r, i) => i === idx ? { ...r, ...patch } : r);
+    writeSvc(name, { ...cur, rows });
+  };
+
+  const removeRow = (name, idx) => {
+    const cur = prices[name] || { flat: false, rows: [] };
+    writeSvc(name, { ...cur, rows: (cur.rows || []).filter((_, i) => i !== idx) });
+  };
+
+  const addRow = (name) => {
+    const cur = prices[name] || { flat: false, rows: [] };
+    const used = new Set((cur.rows || []).map(r => r.duration));
+    const next = PRICE_DURATIONS.find(d => !used.has(d));
+    if (next == null) return;
+    writeSvc(name, { ...cur, rows: [...(cur.rows || []), { duration: next, price: 0 }] });
+  };
+
+  const addService = () => {
+    const name = newName.trim().slice(0, 40);
+    if (!name) return setError(T.invalidServiceName);
+    if (services.includes(name)) return setError(T.duplicateService);
+    if (services.length >= 12) return;
+    setError('');
+    setNewName('');
+    const nextServices = [...services, name];
+    const nextPrices = { ...prices, [name]: { flat: false, rows: [] } };
+    setS({ services: nextServices, servicePrices: nextPrices });
+  };
+
+  const removeService = (name) => {
+    const nextServices = services.filter(n => n !== name);
+    const nextPrices = { ...prices };
+    delete nextPrices[name];
+    setS({ services: nextServices, servicePrices: nextPrices });
+  };
+
+  return (
+    <div>
+      {services.map(name => {
+        const cfg = prices[name] || { flat: false, rows: [] };
+        const usedCount = (cfg.rows || []).length;
+        return (
+          <div key={name} style={{ marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${c.hairline2}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <div style={{ fontFamily: FONTS.serif, fontSize: 16, color: c.ink, flex: 1 }}>{name}</div>
+              <button onClick={() => setFlat(name, false)} style={segBtn(c, !cfg.flat)} title={T.serviceTimed}>{T.serviceTimed}</button>
+              <button onClick={() => setFlat(name, true)} style={segBtn(c, !!cfg.flat)} title={T.serviceFlat}>{T.serviceFlat}</button>
+              <button onClick={() => removeService(name)} style={{
+                padding: '6px 10px', border: `1px solid ${c.hairline}`, background: 'transparent',
+                borderRadius: 2, fontFamily: FONTS.ui, fontSize: 11, color: c.danger, cursor: 'pointer',
+              }}>✕</button>
+            </div>
+
+            {cfg.flat ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <div style={miniLabel(c)}>{T.flatDuration}</div>
+                  <select value={cfg.duration || 180}
+                    onChange={e => writeSvc(name, { ...cfg, duration: Number(e.target.value) })}
+                    style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px' }}>
+                    {PRICE_DURATIONS.map(d => <option key={d} value={d}>{d} {T.mins}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div style={miniLabel(c)}>{T.flatPrice} ({T.ron})</div>
+                  <input type="number" min="0" step="10" value={cfg.price ?? 0}
+                    onChange={e => writeSvc(name, { ...cfg, price: Math.max(0, Number(e.target.value) || 0) })}
+                    style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px' }} />
+                </div>
+              </div>
+            ) : (
+              <div>
+                {(cfg.rows || []).map((row, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <select value={row.duration}
+                      onChange={e => setRow(name, idx, { duration: Number(e.target.value) })}
+                      style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px', width: 88 }}>
+                      {PRICE_DURATIONS.map(d => <option key={d} value={d}>{d} {T.mins}</option>)}
+                    </select>
+                    <input type="number" min="0" step="10" value={row.price ?? 0}
+                      onChange={e => setRow(name, idx, { price: Math.max(0, Number(e.target.value) || 0) })}
+                      style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px', flex: 1 }} />
+                    <span style={{ fontSize: 11, color: c.muted }}>{T.ron}</span>
+                    <button onClick={() => removeRow(name, idx)} style={{
+                      padding: '6px 10px', border: `1px solid ${c.hairline}`, background: 'transparent',
+                      borderRadius: 2, fontFamily: FONTS.ui, fontSize: 11, color: c.danger, cursor: 'pointer',
+                    }}>✕</button>
+                  </div>
+                ))}
+                <button onClick={() => addRow(name)} disabled={usedCount >= PRICE_DURATIONS.length} style={{
+                  width: '100%', marginTop: 4, padding: '8px', border: `1px dashed ${c.hairline}`,
+                  background: 'transparent', borderRadius: 2, fontFamily: FONTS.ui, fontSize: 12,
+                  color: usedCount >= PRICE_DURATIONS.length ? c.muted : c.ink2,
+                  cursor: usedCount >= PRICE_DURATIONS.length ? 'not-allowed' : 'pointer',
+                }}>+ {T.addDuration}</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+        <input type="text" maxLength={40} value={newName} placeholder={T.addServicePlaceholder}
+          onChange={e => { setNewName(e.target.value); if (error) setError(''); }}
+          onKeyDown={e => { if (e.key === 'Enter') addService(); }}
+          style={{ ...inp(c, FONTS.ui, 13), padding: '10px 12px', flex: 1 }} />
+        <button onClick={addService} disabled={services.length >= 12} style={{
+          padding: '10px 14px', border: 'none', background: services.length >= 12 ? c.hairline : c.accent,
+          borderRadius: 3, fontFamily: FONTS.ui, fontSize: 13, fontWeight: 600, color: '#fff',
+          cursor: services.length >= 12 ? 'not-allowed' : 'pointer',
+        }}>+ {T.addService}</button>
+      </div>
+      {error && <div style={{ fontSize: 11, color: c.danger, marginTop: 6 }}>{error}</div>}
+    </div>
+  );
+}
+
+function segBtn(c, active) {
+  return {
+    padding: '6px 10px', border: `1px solid ${active ? c.ink : c.hairline}`,
+    background: active ? c.ink : c.surface, borderRadius: 2,
+    fontFamily: FONTS.ui, fontSize: 11, color: active ? c.bg : c.ink2, cursor: 'pointer',
+    letterSpacing: 0.3,
+  };
+}
+
+function miniLabel(c) {
+  return { fontSize: 10, color: c.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 };
 }
 
 Object.assign(window, { SettingsScreen, InboxScreen });

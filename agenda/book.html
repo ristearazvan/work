@@ -78,6 +78,31 @@
   .ro-chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .ro-chip { padding: 8px 12px; background: var(--surface2); border: 1px solid var(--hair);
              border-radius: 2px; font-size: 13px; color: var(--ink2); }
+  .svc-block { padding: 14px 0; border-top: 1px solid var(--hair2); }
+  .svc-block:first-child { border-top: none; padding-top: 4px; }
+  .svc-name { font-family: var(--serif); font-size: 17px; color: var(--ink); margin-bottom: 8px; }
+  .svc-row { display: flex; justify-content: space-between; align-items: baseline;
+             padding: 6px 0; font-size: 13px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .svc-row b { font-family: var(--serif); font-weight: 500; color: var(--ink); }
+  .svc-flat { padding: 6px 0; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums;
+              display: flex; justify-content: space-between; align-items: baseline; }
+  .svc-flat b { font-family: var(--serif); font-weight: 500; }
+  .slot .price { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.3px; }
+  .slot.active .price { color: rgba(255,255,255,0.8); }
+  .album-cta { display: flex; align-items: center; gap: 14px; padding: 14px;
+               background: var(--surface); border: 1px solid var(--hair); border-radius: 3px;
+               margin-top: 16px; cursor: pointer; text-decoration: none; color: inherit;
+               transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease; }
+  .album-cta:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(85,107,61,0.08); }
+  .album-cta:active { transform: scale(0.995); }
+  .album-cta .thumb { flex: 0 0 auto; width: 64px; height: 64px; border-radius: 2px;
+                      background: var(--surface2) center/cover no-repeat; border: 1px solid var(--hair2); }
+  .album-cta .thumb.empty { display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--muted); }
+  .album-cta .meta { flex: 1; min-width: 0; }
+  .album-cta .title { font-family: var(--serif); font-size: 17px; color: var(--ink); letter-spacing: -0.2px; }
+  .album-cta .count { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .album-cta .arrow { flex: 0 0 auto; font-size: 18px; color: var(--accent); font-weight: 600; }
+  .album-hidden { display: none; }
 </style>
 </head>
 <body>
@@ -86,7 +111,14 @@
   <h1 id="heading">Alege un slot</h1>
   <p class="sub" id="subheading">Completează cererea. Vei primi un link de status după trimitere.</p>
 
-  <p class="sub" style="margin-top:10px"><a id="album-link" class="album-link" href="#" style="color:var(--accent);text-decoration:none;font-weight:500;">Vezi album →</a></p>
+  <a id="album-cta" class="album-cta album-hidden" href="#">
+    <div class="thumb empty" id="album-thumb">♡</div>
+    <div class="meta">
+      <div class="title">Vezi album</div>
+      <div class="count" id="album-count"></div>
+    </div>
+    <div class="arrow">→</div>
+  </a>
 
   <div id="content"><div class="card"><div class="empty"><h2>Se încarcă…</h2></div></div></div>
 </div>
@@ -106,8 +138,49 @@
     app.innerHTML = '<div class="card"><div class="empty"><h2>Link invalid</h2></div></div>';
     return;
   }
-  const albumLink = document.getElementById('album-link');
-  if (albumLink) albumLink.href = '/book/' + encodeURIComponent(slug) + '/album';
+  const albumCta = document.getElementById('album-cta');
+  if (albumCta) albumCta.href = '/book/' + encodeURIComponent(slug) + '/album';
+
+  function renderAlbumCta(d) {
+    if (!albumCta) return;
+    const count = Number(d.media_count) || 0;
+    if (!d.public_enabled || count <= 0) {
+      albumCta.classList.add('album-hidden');
+      return;
+    }
+    albumCta.classList.remove('album-hidden');
+    const thumb = document.getElementById('album-thumb');
+    const countEl = document.getElementById('album-count');
+    if (countEl) countEl.textContent = count === 1 ? '1 fișier media' : `${count} fișiere media`;
+    if (thumb && d.album_thumb_id) {
+      thumb.classList.remove('empty');
+      thumb.textContent = '';
+      thumb.style.backgroundImage = `url(/api/${encodeURIComponent(slug)}/media/${encodeURIComponent(d.album_thumb_id)})`;
+    }
+  }
+
+  function priceFor(d, svcName, duration) {
+    const cfg = (d.service_prices || {})[svcName];
+    if (!cfg) return null;
+    if (cfg.flat) return cfg.price;
+    const row = (cfg.rows || []).find(r => r.duration === duration);
+    return row ? row.price : null;
+  }
+
+  function serviceIsFlat(d, svcName) {
+    const cfg = (d.service_prices || {})[svcName];
+    return !!(cfg && cfg.flat);
+  }
+
+  function allowedDurations(d, svcName) {
+    const cfg = (d.service_prices || {})[svcName];
+    if (!cfg) return DURATIONS;
+    if (cfg.flat) return [cfg.duration || 180];
+    const rows = (cfg.rows || []).map(r => r.duration).filter((v, i, a) => a.indexOf(v) === i).sort((a,b) => a-b);
+    return rows.length ? rows : DURATIONS;
+  }
+
+  function fmtRon(v) { return `${Number(v || 0)} RON`; }
 
   const state = {
     availability: null,
@@ -131,7 +204,12 @@
       }
       const data = await r.json();
       state.availability = data;
-      if (data.enabled && data.services.length) state.service = data.services[0];
+      renderAlbumCta(data);
+      if (data.enabled && data.services.length) {
+        state.service = data.services[0];
+        const durs = allowedDurations(data, state.service);
+        if (!durs.includes(state.duration)) state.duration = durs[0] || 60;
+      }
       // Pick first day that has any free slot
       const firstWithSlots = (data.days || []).find(d => d.free && d.free.length);
       if (firstWithSlots) state.selectedDate = firstWithSlots.date;
@@ -152,7 +230,7 @@
   }
 
   function renderReadOnly(d) {
-    setHeader('Program', 'Program', 'Programările online nu sunt disponibile momentan.');
+    setHeader('Program', d.page_title || 'Program', 'Programările online nu sunt disponibile momentan.');
     const hours = d.weekly_hours || {};
     const services = d.services || [];
     const hoursRows = [1,2,3,4,5,6,0].map(dow => {
@@ -161,7 +239,7 @@
       return `<div class="ro-row"><span class="ro-day">${DAYS_LONG[dow]}</span><span class="ro-val">${val}</span></div>`;
     }).join('');
     const servicesHtml = services.length
-      ? services.map(s => `<span class="ro-chip">${escapeHtml(s)}</span>`).join('')
+      ? services.map(svc => renderServiceBlock(d, svc)).join('')
       : `<span class="sub" style="margin:0">—</span>`;
     app.innerHTML = `
       <div class="card">
@@ -170,9 +248,23 @@
       </div>
       <div class="card">
         <div class="label">Servicii</div>
-        <div class="ro-chips">${servicesHtml}</div>
+        <div>${servicesHtml}</div>
       </div>
     `;
+  }
+
+  function renderServiceBlock(d, svc) {
+    const cfg = (d.service_prices || {})[svc];
+    const name = `<div class="svc-name">${escapeHtml(svc)}</div>`;
+    if (!cfg) return `<div class="svc-block">${name}<div class="sub" style="margin:0">—</div></div>`;
+    if (cfg.flat) {
+      const dur = cfg.duration ? ` <span class="sub" style="margin:0">· ${cfg.duration}m</span>` : '';
+      return `<div class="svc-block">${name}<div class="svc-flat"><span>Tarif${dur ? '' : ''}</span><b>${fmtRon(cfg.price)}</b></div></div>`;
+    }
+    const rows = (cfg.rows || []).filter(r => r.price > 0);
+    if (!rows.length) return `<div class="svc-block">${name}<div class="sub" style="margin:0">—</div></div>`;
+    const rowsHtml = rows.map(r => `<div class="svc-row"><span>${r.duration} min</span><b>${fmtRon(r.price)}</b></div>`).join('');
+    return `<div class="svc-block">${name}${rowsHtml}</div>`;
   }
 
   function setHeader(eyebrow, heading, sub) {
@@ -197,6 +289,12 @@
       return;
     }
 
+    setHeader('Programare', d.page_title || 'Program', 'Completează cererea. Vei primi un link de status după trimitere.');
+
+    const durs = allowedDurations(d, state.service);
+    if (!durs.includes(state.duration)) state.duration = durs[0] || 60;
+    const isFlat = serviceIsFlat(d, state.service);
+
     const day = d.days.find(x => x.date === state.selectedDate);
     const slots = slotsForDay(day);
     if (state.selectedStart != null && !slots.some(s => s.start === state.selectedStart)) {
@@ -209,6 +307,8 @@
       const range = day.free.find(r => state.selectedStart >= r.start && state.selectedStart < r.end);
       return range ? range.end - state.selectedStart : 180;
     })();
+
+    const selectedPrice = priceFor(d, state.service, state.duration);
 
     app.innerHTML = `
       <div class="card">
@@ -228,12 +328,18 @@
       </div>
 
       <div class="card">
-        <div class="label">Durată</div>
-        <div class="chips">
-          ${DURATIONS.map(m => `<button class="chip ${state.duration===m?'active':''}" data-dur="${m}" ${m > maxFromStart ? 'disabled' : ''}>${m}m</button>`).join('')}
-        </div>
-
-        <div class="label" style="margin-top:16px">Ora începerii</div>
+        ${isFlat ? '' : `
+          <div class="label">Durată</div>
+          <div class="chips">
+            ${durs.map(m => {
+              const p = priceFor(d, state.service, m);
+              const priceLabel = p != null && p > 0 ? ` · ${p}` : '';
+              return `<button class="chip ${state.duration===m?'active':''}" data-dur="${m}" ${m > maxFromStart ? 'disabled' : ''}>${m}m${priceLabel}</button>`;
+            }).join('')}
+          </div>
+          <div class="label" style="margin-top:16px">Ora începerii</div>
+        `}
+        ${isFlat ? `<div class="label">Ora începerii</div>` : ''}
         ${slots.length === 0
           ? `<p class="sub" style="margin-top:0">Nu sunt sloturi disponibile în această zi cu durata aleasă.</p>`
           : `<div class="slots">
@@ -250,6 +356,7 @@
           })()}</span>
           <b>${fmtHM(state.selectedStart)}–${fmtHM(state.selectedStart + state.duration)}</b>
         </div>
+        ${selectedPrice != null && selectedPrice > 0 ? `<div class="summary" style="margin-top:6px"><span>Tarif</span><b>${fmtRon(selectedPrice)}</b></div>` : ''}
 
         <div class="field" style="margin-top:18px">
           <div class="label">Nume</div>
@@ -305,7 +412,17 @@
     const hp = document.getElementById('f-hp');
     if (name)    name.addEventListener('input',   e => { state.name = e.target.value; });
     if (phone)   phone.addEventListener('input',  e => { state.phone = e.target.value; });
-    if (service) service.addEventListener('change', e => { state.service = e.target.value; });
+    if (service) service.addEventListener('change', e => {
+      state.service = e.target.value;
+      const d2 = state.availability;
+      const nextDurs = allowedDurations(d2, state.service);
+      if (serviceIsFlat(d2, state.service)) {
+        state.duration = nextDurs[0];
+      } else if (!nextDurs.includes(state.duration)) {
+        state.duration = nextDurs[0] || 60;
+      }
+      render();
+    });
     if (notes)   notes.addEventListener('input',  e => { state.notes = e.target.value; });
     const btn = document.getElementById('submit');
     if (btn) btn.addEventListener('click', () => submit(hp && hp.value));
