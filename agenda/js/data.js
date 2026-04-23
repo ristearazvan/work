@@ -1,7 +1,15 @@
 // Agenda — seed data, Romanian strings, localStorage store
 // Local-first. No network calls.
 
-const STORAGE_KEY = 'agenda-state-v1';
+// Per-account local storage. SESSION_KEY holds the login bundle (shared by
+// all accounts on this device — only one can be active at a time). Per-slug
+// state (appointments, income, hours, prices, etc.) lives under a key derived
+// from the account slug, so switching accounts doesn't leak data between them.
+const SESSION_KEY = 'agenda-session-v1';
+const STATE_KEY_PREFIX = 'agenda-state-v1:';
+// Fields written into settings from the session bundle — stripped out before
+// persisting per-slug state to avoid drift between the two stores.
+const SESSION_FIELDS = ['session', 'sessionExpiresAt', 'username', 'slug', 'workerUrl'];
 
 // ────────────────────────────────────────────────────────────────
 // Romanian UI strings
@@ -249,9 +257,29 @@ const SEED = {
 // ────────────────────────────────────────────────────────────────
 // Persistence
 // ────────────────────────────────────────────────────────────────
-function loadState() {
+function loadSession() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const bundle = JSON.parse(raw);
+    if (!bundle || !bundle.session || !bundle.slug) return null;
+    if (bundle.sessionExpiresAt && bundle.sessionExpiresAt * 1000 < Date.now()) return null;
+    return bundle;
+  } catch (e) { return null; }
+}
+
+function saveSession(bundle) {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(bundle)); } catch (e) {}
+}
+
+function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+}
+
+function loadStateFor(slug) {
+  if (!slug) return structuredClone(SEED);
+  try {
+    const raw = localStorage.getItem(STATE_KEY_PREFIX + slug);
     if (!raw) return structuredClone(SEED);
     const parsed = JSON.parse(raw);
     return {
@@ -266,9 +294,14 @@ function loadState() {
   }
 }
 
-function saveState(state) {
+function saveStateFor(slug, state) {
+  if (!slug) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    // Drop session fields — they live in SESSION_KEY, duplicating here risks drift.
+    const { settings, ...rest } = state;
+    const cleanSettings = { ...settings };
+    for (const k of SESSION_FIELDS) delete cleanSettings[k];
+    localStorage.setItem(STATE_KEY_PREFIX + slug, JSON.stringify({ ...rest, settings: cleanSettings }));
   } catch (e) { /* quota or private mode — accept data loss silently */ }
 }
 
@@ -277,4 +310,9 @@ function uid() {
 }
 
 window.AG_T = AG_T;
-window.AG_STORE = { loadState, saveState, uid, SEED, DEFAULT_SETTINGS, DEFAULT_HOURS, PRICE_DURATIONS, DEFAULT_SERVICE_PRICES };
+window.AG_STORE = {
+  loadSession, saveSession, clearSession,
+  loadStateFor, saveStateFor,
+  uid, SEED, DEFAULT_SETTINGS, DEFAULT_HOURS, PRICE_DURATIONS, DEFAULT_SERVICE_PRICES,
+  SESSION_FIELDS,
+};

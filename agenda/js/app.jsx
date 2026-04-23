@@ -2,17 +2,29 @@
 
 function App() {
   const T = window.AG_T;
-  const [state, setState] = React.useState(() => window.AG_STORE.loadState());
+  // State is loaded per-session on demand. On boot, read the persisted session
+  // bundle; if valid, load that slug's per-account state. Otherwise state stays
+  // null and the LoginScreen renders until the user signs in.
+  const [state, setState] = React.useState(() => {
+    const session = window.AG_STORE.loadSession();
+    if (!session) return null;
+    const base = window.AG_STORE.loadStateFor(session.slug);
+    return { ...base, settings: { ...base.settings, ...session } };
+  });
   const [tab, setTab] = React.useState('home');
   const [appt, setAppt] = React.useState(null);
   const [editing, setEditing] = React.useState(null);
   const [syncStatus, setSyncStatus] = React.useState({ state: 'idle' });
   const [refreshingInbox, setRefreshingInbox] = React.useState(false);
 
-  const theme = state.settings.theme === 'dark' ? 'dark' : 'light';
+  const theme = state?.settings.theme === 'dark' ? 'dark' : 'light';
   const c = AG[theme];
 
-  React.useEffect(() => { window.AG_STORE.saveState(state); }, [state]);
+  // Persist per-slug state on every change — but only when logged in.
+  React.useEffect(() => {
+    if (!state || !state.settings.slug) return;
+    window.AG_STORE.saveStateFor(state.settings.slug, state);
+  }, [state]);
 
   React.useEffect(() => {
     const meta = document.getElementById('theme-color-meta');
@@ -22,7 +34,7 @@ function App() {
 
   React.useEffect(() => {
     const toggle = () => {
-      setState(s => ({ ...s, settings: { ...s.settings, theme: s.settings.theme === 'dark' ? 'light' : 'dark' } }));
+      setState(s => s ? ({ ...s, settings: { ...s.settings, theme: s.settings.theme === 'dark' ? 'light' : 'dark' } }) : s);
     };
     window.addEventListener('agenda-toggle-theme', toggle);
     return () => window.removeEventListener('agenda-toggle-theme', toggle);
@@ -34,31 +46,31 @@ function App() {
   stateRef.current = state;
 
   // Session gate: if no valid session, render the login screen instead of the app.
-  const hasSession = SYNC.configured(state.settings);
+  const hasSession = !!state && SYNC.configured(state.settings);
 
   const handleLoggedIn = React.useCallback((sessionData) => {
-    setState(s => ({ ...s, settings: { ...s.settings, ...sessionData } }));
+    // Persist the session bundle and load the per-slug state bucket. First
+    // login for a slug gets the SEED; subsequent logins restore what was there.
+    window.AG_STORE.saveSession(sessionData);
+    const base = window.AG_STORE.loadStateFor(sessionData.slug);
+    setState({ ...base, settings: { ...base.settings, ...sessionData } });
+    setTab('home');
   }, []);
 
   const handleLogout = React.useCallback(async () => {
     const cur = stateRef.current;
-    await SYNC.logout(cur.settings);
-    setState(s => ({
-      ...s,
-      settings: { ...s.settings, session: '', sessionExpiresAt: 0, slug: '', username: '' },
-      inbox: [],
-    }));
+    if (cur) await SYNC.logout(cur.settings);
+    window.AG_STORE.clearSession();
+    setState(null);
     setTab('home');
   }, [SYNC]);
 
   // Auto-logout if any sync call surfaces a SessionExpiredError.
   const handleSyncError = React.useCallback((e) => {
     if (e instanceof SYNC.SessionExpiredError) {
-      setState(s => ({
-        ...s,
-        settings: { ...s.settings, session: '', sessionExpiresAt: 0, slug: '', username: '' },
-        inbox: [],
-      }));
+      window.AG_STORE.clearSession();
+      setState(null);
+      setTab('home');
       return true;
     }
     return false;
@@ -67,15 +79,15 @@ function App() {
   const markSynced = React.useCallback((ok, err) => {
     setSyncStatus(ok ? { state: 'ok' } : { state: 'error', message: err || '' });
     if (ok) {
-      setState(s => ({ ...s, settings: { ...s.settings, lastSyncAt: Date.now(), lastSyncError: '' } }));
+      setState(s => s ? ({ ...s, settings: { ...s.settings, lastSyncAt: Date.now(), lastSyncError: '' } }) : s);
     } else {
-      setState(s => ({ ...s, settings: { ...s.settings, lastSyncError: err || '' } }));
+      setState(s => s ? ({ ...s, settings: { ...s.settings, lastSyncError: err || '' } }) : s);
     }
   }, []);
 
   const pushAll = React.useCallback(async () => {
     const cur = stateRef.current;
-    if (!SYNC.configured(cur.settings)) return;
+    if (!cur || !SYNC.configured(cur.settings)) return;
     setSyncStatus({ state: 'busy' });
     try {
       await SYNC.pushConfig(cur.settings);
@@ -90,7 +102,7 @@ function App() {
   // Debounced pushers — push busy when appointments change, config when relevant settings change.
   const pushBusyDebounced = React.useMemo(() => SYNC.debounce(async () => {
     const cur = stateRef.current;
-    if (!SYNC.configured(cur.settings)) return;
+    if (!cur || !SYNC.configured(cur.settings)) return;
     try {
       await SYNC.pushBusy(cur.settings, cur.appointments);
       markSynced(true);
@@ -102,7 +114,7 @@ function App() {
 
   const pushConfigDebounced = React.useMemo(() => SYNC.debounce(async () => {
     const cur = stateRef.current;
-    if (!SYNC.configured(cur.settings)) return;
+    if (!cur || !SYNC.configured(cur.settings)) return;
     try {
       await SYNC.pushConfig(cur.settings);
       markSynced(true);
@@ -117,13 +129,13 @@ function App() {
   React.useEffect(() => {
     if (firstApptRun.current) { firstApptRun.current = false; return; }
     pushBusyDebounced();
-  }, [state.appointments, pushBusyDebounced]);
+  }, [state?.appointments, pushBusyDebounced]);
 
   // Trigger debounced config push when booking settings change
-  const bookingKey = JSON.stringify({
+  const bookingKey = state ? JSON.stringify({
     h: state.settings.hours, b: state.settings.bufferMin, a: state.settings.advanceMin,
     d: state.settings.maxDays, e: state.settings.publicEnabled, s: state.settings.services,
-  });
+  }) : '';
   const firstCfgRun = React.useRef(true);
   React.useEffect(() => {
     if (firstCfgRun.current) { firstCfgRun.current = false; return; }
@@ -133,12 +145,12 @@ function App() {
   // Fetch inbox on mount + whenever user opens it
   const refreshInbox = React.useCallback(async () => {
     const cur = stateRef.current;
-    if (!SYNC.configured(cur.settings)) return;
+    if (!cur || !SYNC.configured(cur.settings)) return;
     setRefreshingInbox(true);
     try {
       const data = await SYNC.fetchInbox(cur.settings);
       const reqs = (data.requests || []).filter(r => r.status === 'pending');
-      setState(s => ({ ...s, inbox: reqs }));
+      setState(s => s ? ({ ...s, inbox: reqs }) : s);
       markSynced(true);
     } catch (e) {
       if (!handleSyncError(e)) markSynced(false, e.message || String(e));
@@ -148,14 +160,15 @@ function App() {
   }, [SYNC, markSynced, handleSyncError]);
 
   React.useEffect(() => {
-    if (SYNC.configured(state.settings)) refreshInbox();
-    // Periodic refresh while app is open
+    if (hasSession) refreshInbox();
+    // Periodic refresh while app is open.
     const h = setInterval(() => {
-      if (document.visibilityState === 'visible' && SYNC.configured(stateRef.current.settings)) refreshInbox();
+      const cur = stateRef.current;
+      if (document.visibilityState === 'visible' && cur && SYNC.configured(cur.settings)) refreshInbox();
     }, 60000);
     return () => clearInterval(h);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasSession]);
 
   // ── Actions ────────────────────────────────────────────────────
   const openAppt = (a) => { setAppt(a); setTab('detail'); };
@@ -295,7 +308,7 @@ function App() {
   if (!hasSession) {
     return (
       <div style={{ height: '100%', background: c.bg, color: c.ink, overflow: 'auto' }}>
-        <LoginScreen c={c} workerUrl={state.settings.workerUrl} onLoggedIn={handleLoggedIn} />
+        <LoginScreen c={c} workerUrl={state?.settings.workerUrl || ''} onLoggedIn={handleLoggedIn} />
       </div>
     );
   }
