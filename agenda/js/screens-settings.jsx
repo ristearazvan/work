@@ -3,13 +3,18 @@
 // ──────────────────────────────────────────────────────────────
 // SETTINGS
 // ──────────────────────────────────────────────────────────────
-function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncStatus }) {
+function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncStatus, onLogout }) {
   const T = window.AG_T;
   window.__AG_C = c;
   const s = state.settings;
 
   const setS = (patch) => onUpdateSettings({ ...s, ...patch });
-  const hasToken = !!(s.adminToken && s.adminToken.trim());
+  const hasToken = !!(s.session && s.session.trim());
+  const bookingUrl = s.slug ? `${location.origin}/book/${s.slug}` : '';
+  const copyBookingUrl = async () => {
+    if (!bookingUrl) return;
+    try { await navigator.clipboard.writeText(bookingUrl); } catch {}
+  };
   const setHours = (dow, patch) => {
     const next = { ...(s.hours || {}) };
     const cur = next[dow] || { open: 600, close: 1320 };
@@ -60,12 +65,18 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
 
       <div style={{ padding: '0 16px' }}>
 
-        {/* Sync section */}
+        {/* Account section */}
         <Section c={c} title={T.syncSection}>
-          <FieldBlock label={T.adminToken}>
-            <input type="password" value={s.adminToken || ''} onChange={e => setS({ adminToken: e.target.value })}
-              placeholder={T.adminTokenPh} style={inp(c, FONTS.mono, 13)} autoComplete="new-password" />
-            <div style={{ fontSize: 11, color: c.muted, marginTop: 6 }}>{T.adminTokenHint}</div>
+          <FieldBlock label={T.accountLabel}>
+            <div style={{ fontFamily: FONTS.mono, fontSize: 14, color: c.ink }}>{s.username || '—'}</div>
+          </FieldBlock>
+          <FieldBlock label={T.bookingUrl}>
+            <div onClick={copyBookingUrl} style={{
+              fontFamily: FONTS.mono, fontSize: 12, color: c.accent, wordBreak: 'break-all',
+              cursor: bookingUrl ? 'pointer' : 'default', padding: '8px 10px',
+              border: `1px solid ${c.hairline}`, borderRadius: 2, background: c.surface2,
+            }}>{bookingUrl || '—'}</div>
+            <div style={{ fontSize: 11, color: c.muted, marginTop: 6 }}>{T.bookingUrlHint}</div>
           </FieldBlock>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button onClick={onSyncNow} disabled={!hasToken} style={{
@@ -76,6 +87,11 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
               cursor: hasToken ? 'pointer' : 'not-allowed',
               letterSpacing: 0.3,
             }}>{T.syncNow}</button>
+            <button onClick={onLogout} style={{
+              padding: '12px 16px', border: `1px solid ${c.hairline}`, background: c.surface,
+              borderRadius: 3, fontFamily: FONTS.ui, fontSize: 12, color: c.ink2, cursor: 'pointer',
+              letterSpacing: 0.3,
+            }}>{T.logout}</button>
           </div>
           <div style={{ fontSize: 11, color: syncStatus?.state === 'error' ? c.danger : c.muted, marginTop: 10 }}>
             {lastSyncLabel}

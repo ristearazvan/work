@@ -33,6 +33,37 @@ function App() {
   const stateRef = React.useRef(state);
   stateRef.current = state;
 
+  // Session gate: if no valid session, render the login screen instead of the app.
+  const hasSession = SYNC.configured(state.settings);
+
+  const handleLoggedIn = React.useCallback((sessionData) => {
+    setState(s => ({ ...s, settings: { ...s.settings, ...sessionData } }));
+  }, []);
+
+  const handleLogout = React.useCallback(async () => {
+    const cur = stateRef.current;
+    await SYNC.logout(cur.settings);
+    setState(s => ({
+      ...s,
+      settings: { ...s.settings, session: '', sessionExpiresAt: 0, slug: '', username: '' },
+      inbox: [],
+    }));
+    setTab('home');
+  }, [SYNC]);
+
+  // Auto-logout if any sync call surfaces a SessionExpiredError.
+  const handleSyncError = React.useCallback((e) => {
+    if (e instanceof SYNC.SessionExpiredError) {
+      setState(s => ({
+        ...s,
+        settings: { ...s.settings, session: '', sessionExpiresAt: 0, slug: '', username: '' },
+        inbox: [],
+      }));
+      return true;
+    }
+    return false;
+  }, [SYNC]);
+
   const markSynced = React.useCallback((ok, err) => {
     setSyncStatus(ok ? { state: 'ok' } : { state: 'error', message: err || '' });
     if (ok) {
@@ -51,9 +82,10 @@ function App() {
       await SYNC.pushBusy(cur.settings, cur.appointments);
       markSynced(true);
     } catch (e) {
+      if (handleSyncError(e)) return;
       markSynced(false, e.message || String(e));
     }
-  }, [SYNC, markSynced]);
+  }, [SYNC, markSynced, handleSyncError]);
 
   // Debounced pushers — push busy when appointments change, config when relevant settings change.
   const pushBusyDebounced = React.useMemo(() => SYNC.debounce(async () => {
@@ -62,8 +94,11 @@ function App() {
     try {
       await SYNC.pushBusy(cur.settings, cur.appointments);
       markSynced(true);
-    } catch (e) { markSynced(false, e.message || String(e)); }
-  }, 1500), [SYNC, markSynced]);
+    } catch (e) {
+      if (handleSyncError(e)) return;
+      markSynced(false, e.message || String(e));
+    }
+  }, 1500), [SYNC, markSynced, handleSyncError]);
 
   const pushConfigDebounced = React.useMemo(() => SYNC.debounce(async () => {
     const cur = stateRef.current;
@@ -71,8 +106,11 @@ function App() {
     try {
       await SYNC.pushConfig(cur.settings);
       markSynced(true);
-    } catch (e) { markSynced(false, e.message || String(e)); }
-  }, 1500), [SYNC, markSynced]);
+    } catch (e) {
+      if (handleSyncError(e)) return;
+      markSynced(false, e.message || String(e));
+    }
+  }, 1500), [SYNC, markSynced, handleSyncError]);
 
   // Trigger debounced busy push when appointments change
   const firstApptRun = React.useRef(true);
@@ -103,11 +141,11 @@ function App() {
       setState(s => ({ ...s, inbox: reqs }));
       markSynced(true);
     } catch (e) {
-      markSynced(false, e.message || String(e));
+      if (!handleSyncError(e)) markSynced(false, e.message || String(e));
     } finally {
       setRefreshingInbox(false);
     }
-  }, [SYNC, markSynced]);
+  }, [SYNC, markSynced, handleSyncError]);
 
   React.useEffect(() => {
     if (SYNC.configured(state.settings)) refreshInbox();
@@ -212,6 +250,7 @@ function App() {
       }));
       markSynced(true);
     } catch (e) {
+      if (handleSyncError(e)) return;
       markSynced(false, e.message || String(e));
       alert(e.message || T.syncError);
     }
@@ -225,6 +264,7 @@ function App() {
       setState(s => ({ ...s, inbox: s.inbox.filter(x => x.id !== r.id) }));
       markSynced(true);
     } catch (e) {
+      if (handleSyncError(e)) return;
       markSynced(false, e.message || String(e));
       alert(e.message || T.syncError);
     }
@@ -244,13 +284,21 @@ function App() {
   else if (tab === 'money') screen = <AddIncomeScreen c={c} state={state} onCancel={backHome} onSave={saveIncome} />;
   else if (tab === 'stats') screen = <AnalyticsScreen c={c} state={state} />;
   else if (tab === 'flagged') screen = <FlaggedScreen c={c} state={state} onBack={backHome} onAdd={addFlagged} onRemove={removeFlagged} />;
-  else if (tab === 'settings') screen = <SettingsScreen c={c} state={state} onBack={backHome} onUpdateSettings={updateSettings} onSyncNow={pushAll} syncStatus={syncStatus} />;
+  else if (tab === 'settings') screen = <SettingsScreen c={c} state={state} onBack={backHome} onUpdateSettings={updateSettings} onSyncNow={pushAll} syncStatus={syncStatus} onLogout={handleLogout} />;
   else if (tab === 'inbox') screen = <InboxScreen c={c} state={state} onBack={backHome} onRefresh={refreshInbox} onApprove={approveRequest} onReject={rejectRequest} refreshing={refreshingInbox} />;
 
   const hiddenTabs = ['detail', 'flagged', 'settings', 'inbox', 'new'];
   const bottomTab = hiddenTabs.includes(tab) ? null : tab === 'money' ? 'money' : tab;
 
   window.__AG_C = c;
+
+  if (!hasSession) {
+    return (
+      <div style={{ height: '100%', background: c.bg, color: c.ink, overflow: 'auto' }}>
+        <LoginScreen c={c} workerUrl={state.settings.workerUrl} onLoggedIn={handleLoggedIn} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ height: '100%', background: c.bg, color: c.ink, position: 'relative', overflow: 'hidden', transition: 'background 200ms ease, color 200ms ease' }}>

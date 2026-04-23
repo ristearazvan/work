@@ -1,28 +1,32 @@
-// Agenda — Worker sync: pushes provider state outward, polls the public inbox.
-// No-op silently when workerUrl/adminToken aren't configured yet.
+// Agenda — Worker sync: pushes provider state outward, polls the account's inbox.
+// All admin requests are authenticated with a session token stored in settings.
+// No-op silently when no valid session is present.
 
 (function () {
-  const BASE_KEY = 'agenda-state-v1';
-
   function baseUrl(settings) {
     const s = (settings.workerUrl || '').trim();
     if (s) return s.replace(/\/+$/, '');
-    // Same origin — works when the app is served by the Worker itself.
     return location.origin;
   }
 
   function authHeaders(settings) {
     return {
       'content-type': 'application/json',
-      'authorization': 'Bearer ' + (settings.adminToken || ''),
+      'authorization': 'Bearer ' + (settings.session || ''),
     };
   }
 
   function configured(settings) {
-    return !!(settings.adminToken && settings.adminToken.trim());
+    if (!settings.session) return false;
+    if (settings.sessionExpiresAt && settings.sessionExpiresAt * 1000 < Date.now()) return false;
+    return true;
   }
 
-  // Convert HH:MM time + duration to {date, start_min, end_min} used by the worker.
+  // Signals to the caller that the session is gone so it should log out.
+  class SessionExpiredError extends Error {
+    constructor() { super('session_expired'); this.name = 'SessionExpiredError'; }
+  }
+
   function apptToBusy(a) {
     if (!a || a.status === 'anulat') return null;
     const [h, m] = (a.time || '00:00').split(':').map(Number);
@@ -52,11 +56,40 @@
   async function doFetch(settings, path, init = {}) {
     const url = baseUrl(settings) + path;
     const res = await fetch(url, init);
+    if (res.status === 401) throw new SessionExpiredError();
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`${res.status} ${text.slice(0, 120)}`);
     }
     return res.json();
+  }
+
+  async function login(workerUrl, username, password) {
+    const base = (workerUrl || '').trim().replace(/\/+$/, '') || location.origin;
+    const res = await fetch(base + '/api/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || 'login_failed');
+      err.status = res.status;
+      err.retryAfter = data.retry_after;
+      throw err;
+    }
+    return data;  // { session, expires_at, slug }
+  }
+
+  async function logout(settings) {
+    if (!settings.session) return { ok: true };
+    try {
+      await fetch(baseUrl(settings) + '/api/logout', {
+        method: 'POST',
+        headers: authHeaders(settings),
+      });
+    } catch {}
+    return { ok: true };
   }
 
   async function pushBusy(settings, appointments) {
@@ -81,7 +114,7 @@
     if (!configured(settings)) return { skipped: true, requests: [] };
     return doFetch(settings, '/api/inbox', {
       method: 'GET',
-      headers: { 'authorization': 'Bearer ' + settings.adminToken },
+      headers: authHeaders(settings),
     });
   }
 
@@ -93,6 +126,7 @@
       headers: authHeaders(settings),
       body: JSON.stringify({ decision }),
     });
+    if (res.status === 401) throw new SessionExpiredError();
     if (res.status === 409) return { conflict: true };
     if (!res.ok) {
       const t = await res.text().catch(() => '');
@@ -101,8 +135,6 @@
     return res.json();
   }
 
-  // Debounced push: calls onSuccess/onError with the result (used to update
-  // lastSyncAt/lastSyncError state).
   function debounce(fn, delay) {
     let h = null;
     return (...args) => {
@@ -121,7 +153,9 @@
   }
 
   window.AG_SYNC = {
+    login, logout,
     pushBusy, pushConfig, fetchInbox, decide, resetRemote,
     configured, debounce, busyPayload, configPayload,
+    SessionExpiredError,
   };
 })();

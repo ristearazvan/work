@@ -50,7 +50,9 @@
 (function () {
   const DAYS = ['Dum','Lun','Mar','Mie','Joi','Vin','Sâm'];
   const MONTHS = ['ianuarie','februarie','martie','aprilie','mai','iunie','iulie','august','septembrie','octombrie','noiembrie','decembrie'];
+  // URL shape: /book/<slug>/status/<token>
   const parts = location.pathname.split('/').filter(Boolean);
+  const slug = parts[1] || '';
   const token = parts[parts.length - 1];
 
   function pad(n){ return String(n).padStart(2,'0'); }
@@ -97,7 +99,7 @@
             <div class="row"><span class="k">Durată</span><span class="v">${data.duration_min} minute</span></div>
           </div>
         </div>
-        ${data.status === 'rejected' ? '<p class="sub" style="margin-top:18px"><a class="link" href="/book">← Trimite o cerere nouă</a></p>' : ''}
+        ${data.status === 'rejected' ? `<p class="sub" style="margin-top:18px"><a class="link" href="/book/${encodeURIComponent(slug)}">← Trimite o cerere nouă</a></p>` : ''}
       `;
     } catch {
       document.getElementById('title').textContent = 'Eroare de conexiune';

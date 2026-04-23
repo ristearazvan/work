@@ -87,6 +87,14 @@
   const MONTHS    = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Noi','Dec'];
   const DURATIONS = [30, 60, 90, 120, 180];
 
+  // Slug is the path segment after /book/, used to scope all API calls.
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const slug = pathParts[1] || '';
+  if (!slug) {
+    app.innerHTML = '<div class="card"><div class="empty"><h2>Link invalid</h2></div></div>';
+    return;
+  }
+
   const state = {
     availability: null,
     selectedDate: null,
@@ -102,7 +110,11 @@
 
   async function load() {
     try {
-      const r = await fetch('/api/availability', { cache: 'no-store' });
+      const r = await fetch('/api/' + encodeURIComponent(slug) + '/availability', { cache: 'no-store' });
+      if (r.status === 404) {
+        app.innerHTML = '<div class="card"><div class="empty"><h2>Pagină inexistentă</h2></div></div>';
+        return;
+      }
       const data = await r.json();
       state.availability = data;
       if (data.enabled && data.services.length) state.service = data.services[0];
@@ -259,7 +271,7 @@
     state.submitting = true;
     render();
     try {
-      const r = await fetch('/api/requests', {
+      const r = await fetch('/api/' + encodeURIComponent(slug) + '/requests', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -286,7 +298,7 @@
         state.submitting = false;
         return render();
       }
-      location.href = '/book/status/' + encodeURIComponent(data.token);
+      location.href = '/book/' + encodeURIComponent(slug) + '/status/' + encodeURIComponent(data.token);
     } catch {
       state.error = 'Eroare de conexiune.';
       state.submitting = false;
