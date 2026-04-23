@@ -1,31 +1,35 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "work",
-  "main": "src/worker.js",
-  "compatibility_date": "2026-04-18",
-  "observability": {
-    "enabled": true
-  },
-  "assets": {
-    "directory": "agenda",
-    "binding": "ASSETS",
-    "html_handling": "none",
-    "not_found_handling": "none"
-  },
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "agenda",
-      "database_id": "61066b58-99c5-4ae3-8f51-8220afeb8a24"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "MEDIA",
-      "bucket_name": "agenda-media"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "work",
+	"main": "src/worker.js",
+	"compatibility_date": "2026-04-18",
+	"observability": {
+		"enabled": true
+	},
+	"assets": {
+		"directory": "agenda",
+		"binding": "ASSETS",
+		"html_handling": "none",
+		"not_found_handling": "none"
+	},
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "agenda",
+			"database_id": "61066b58-99c5-4ae3-8f51-8220afeb8a24"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "agenda-media"
+		},
+		{
+			"bucket_name": "agenda-media",
+			"binding": "agenda_media"
+		}
+	]
 }
