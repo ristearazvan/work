@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Album</title>
+<meta name="theme-color" content="#F5F3EE" />
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F3EE; --surface: #FFFFFF; --surface2: #FAF8F3;
+    --ink: #1C1C1A; --ink2: #3A3A36; --muted: #8A867C;
+    --hair: #E5E1D8; --hair2: #EFEBE2;
+    --accent: #556B3D; --accentSoft: #EAEEE1;
+    --ui: 'Inter', -apple-system, system-ui, sans-serif;
+    --serif: 'Fraunces', Georgia, serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); }
+  #app { max-width: 520px; margin: 0 auto; padding: 20px 20px 60px; min-height: 100vh; }
+  @media (min-width: 521px) { body { background: #E5E1D8; } #app { background: var(--bg); box-shadow: 0 0 0 1px rgba(0,0,0,0.06); } }
+  h1 { font-family: var(--serif); font-size: 30px; font-weight: 400; letter-spacing: -0.5; margin: 4px 0 6px; line-height: 1.1; }
+  .eyebrow { font-size: 11px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; font-weight: 500; }
+  .sub { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 16px; }
+  .tile { position: relative; aspect-ratio: 1 / 1; background: var(--surface2); border: 1px solid var(--hair); border-radius: 2px; overflow: hidden; cursor: pointer; }
+  .tile img, .tile video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile .badge { position: absolute; bottom: 6px; left: 6px; background: rgba(0,0,0,0.55); color: #fff; font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase; padding: 2px 6px; border-radius: 2px; font-weight: 600; }
+  .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 500; margin-bottom: 12px; }
+  .empty { padding: 40px 20px; text-align: center; background: var(--surface); border: 1px solid var(--hair); border-radius: 3px; margin-top: 16px; }
+  .empty h2 { font-family: var(--serif); font-size: 18px; color: var(--ink2); font-weight: 400; margin: 0; }
+  .empty p { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  /* Lightbox */
+  .lb { position: fixed; inset: 0; background: rgba(20,20,18,0.95); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .lb.open { display: flex; }
+  .lb img, .lb video { max-width: 96vw; max-height: 92vh; object-fit: contain; }
+  .lb .close { position: absolute; top: 14px; right: 16px; color: #fff; background: transparent; border: none; font-size: 26px; cursor: pointer; }
+  .lb .nav { position: absolute; top: 50%; transform: translateY(-50%); color: #fff; background: transparent; border: none; font-size: 34px; cursor: pointer; padding: 10px 16px; }
+  .lb .prev { left: 4px; }
+  .lb .next { right: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <a class="back" href="#" id="back">← Înapoi la programare</a>
+  <div class="eyebrow">Album</div>
+  <h1 id="title">Se încarcă…</h1>
+  <p class="sub" id="sub"></p>
+  <div id="content"></div>
+</div>
+
+<div class="lb" id="lb">
+  <button class="close" id="lb-close" aria-label="Închide">×</button>
+  <button class="nav prev" id="lb-prev" aria-label="Precedent">‹</button>
+  <div id="lb-slot"></div>
+  <button class="nav next" id="lb-next" aria-label="Următor">›</button>
+</div>
+
+<script>
+(function () {
+  const parts = location.pathname.split('/').filter(Boolean);
+  const slug = parts[1] || '';
+  const backLink = document.getElementById('back');
+  backLink.href = '/book/' + encodeURIComponent(slug);
+
+  const content = document.getElementById('content');
+  const title = document.getElementById('title');
+  const sub = document.getElementById('sub');
+  const lb = document.getElementById('lb');
+  const lbSlot = document.getElementById('lb-slot');
+  const lbClose = document.getElementById('lb-close');
+  const lbPrev = document.getElementById('lb-prev');
+  const lbNext = document.getElementById('lb-next');
+
+  let items = [];
+  let lbIndex = -1;
+
+  function mediaUrl(id) {
+    return '/api/' + encodeURIComponent(slug) + '/media/' + encodeURIComponent(id);
+  }
+
+  function openLightbox(i) {
+    lbIndex = i;
+    const it = items[i];
+    if (!it) return;
+    lbSlot.innerHTML = '';
+    if (it.kind === 'video') {
+      const v = document.createElement('video');
+      v.src = mediaUrl(it.id);
+      v.controls = true;
+      v.autoplay = true;
+      v.playsInline = true;
+      lbSlot.appendChild(v);
+    } else {
+      const im = document.createElement('img');
+      im.src = mediaUrl(it.id);
+      im.alt = '';
+      lbSlot.appendChild(im);
+    }
+    lb.classList.add('open');
+  }
+  function closeLightbox() {
+    lb.classList.remove('open');
+    lbSlot.innerHTML = '';
+    lbIndex = -1;
+  }
+  lbClose.addEventListener('click', closeLightbox);
+  lb.addEventListener('click', (e) => { if (e.target === lb) closeLightbox(); });
+  lbPrev.addEventListener('click', (e) => { e.stopPropagation(); if (lbIndex > 0) openLightbox(lbIndex - 1); });
+  lbNext.addEventListener('click', (e) => { e.stopPropagation(); if (lbIndex < items.length - 1) openLightbox(lbIndex + 1); });
+  document.addEventListener('keydown', (e) => {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === 'ArrowLeft' && lbIndex > 0) openLightbox(lbIndex - 1);
+    else if (e.key === 'ArrowRight' && lbIndex < items.length - 1) openLightbox(lbIndex + 1);
+  });
+
+  async function load() {
+    if (!slug) {
+      title.textContent = 'Link invalid';
+      return;
+    }
+    try {
+      const r = await fetch('/api/' + encodeURIComponent(slug) + '/media', { cache: 'no-store' });
+      if (r.status === 404) { title.textContent = 'Pagină inexistentă'; return; }
+      const data = await r.json();
+      items = data.items || [];
+      title.textContent = items.length ? 'Album' : 'Album gol';
+      sub.textContent = items.length
+        ? `${items.length} ${items.length === 1 ? 'articol' : 'articole'}`
+        : 'Nicio imagine încă.';
+
+      if (!items.length) {
+        content.innerHTML = '<div class="empty"><h2>Nimic de afișat</h2><p>Revino mai târziu.</p></div>';
+        return;
+      }
+
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      items.forEach((it, i) => {
+        const tile = document.createElement('button');
+        tile.className = 'tile';
+        tile.type = 'button';
+        const url = mediaUrl(it.id);
+        if (it.kind === 'video') {
+          tile.innerHTML = `<video src="${url}" muted playsinline preload="metadata"></video><span class="badge">video</span>`;
+        } else {
+          tile.innerHTML = `<img src="${url}" alt="" loading="lazy" />`;
+        }
+        tile.addEventListener('click', () => openLightbox(i));
+        grid.appendChild(tile);
+      });
+      content.innerHTML = '';
+      content.appendChild(grid);
+    } catch {
+      title.textContent = 'Eroare de conexiune';
+    }
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

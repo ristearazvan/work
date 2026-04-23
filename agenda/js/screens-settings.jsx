@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────────────
 // SETTINGS
 // ──────────────────────────────────────────────────────────────
-function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncStatus, onLogout }) {
+function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncStatus, onLogout, onOpenAlbum }) {
   const T = window.AG_T;
   window.__AG_C = c;
   const s = state.settings;
@@ -96,6 +96,16 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
           <div style={{ fontSize: 11, color: syncStatus?.state === 'error' ? c.danger : c.muted, marginTop: 10 }}>
             {lastSyncLabel}
           </div>
+        </Section>
+
+        {/* Album submenu */}
+        <Section c={c} title={T.album}>
+          <div style={{ fontSize: 12, color: c.muted, marginBottom: 12, lineHeight: 1.5 }}>{T.albumSub}</div>
+          <button onClick={onOpenAlbum} style={{
+            width: '100%', padding: '12px', border: `1px solid ${c.hairline}`, background: c.surface,
+            borderRadius: 3, fontFamily: FONTS.ui, fontSize: 13, color: c.ink, cursor: 'pointer',
+            letterSpacing: 0.3, fontWeight: 500,
+          }}>{T.albumManage}</button>
         </Section>
 
         {/* Booking section */}

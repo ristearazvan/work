@@ -152,9 +152,81 @@
     });
   }
 
+  // ── Media (R2-backed album) ────────────────────────────────────
+  async function fetchMedia(settings) {
+    if (!configured(settings)) return { items: [], used_bytes: 0, limit_bytes: 0 };
+    return doFetch(settings, '/api/media', {
+      method: 'GET',
+      headers: authHeaders(settings),
+    });
+  }
+
+  // Uploads a File/Blob via XHR so we can report progress. Resolves with the
+  // parsed JSON response on success; rejects with an Error that carries
+  // `status` and (optionally) parsed `body` for the UI to map.
+  function uploadMedia(settings, file, onProgress) {
+    return new Promise((resolve, reject) => {
+      if (!configured(settings)) {
+        reject(new Error('not_configured'));
+        return;
+      }
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', baseUrl(settings) + '/api/media', true);
+      xhr.setRequestHeader('authorization', 'Bearer ' + settings.session);
+      xhr.setRequestHeader('content-type', file.type || 'application/octet-stream');
+      if (file.name) xhr.setRequestHeader('x-filename', encodeURIComponent(file.name));
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
+      };
+      xhr.onload = () => {
+        let body = null;
+        try { body = JSON.parse(xhr.responseText); } catch {}
+        if (xhr.status === 401) {
+          reject(new SessionExpiredError());
+          return;
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(body);
+        } else {
+          const err = new Error((body && body.error) || `http_${xhr.status}`);
+          err.status = xhr.status;
+          err.body = body;
+          reject(err);
+        }
+      };
+      xhr.onerror = () => reject(new Error('network_error'));
+      xhr.onabort = () => reject(new Error('aborted'));
+      xhr.send(file);
+    });
+  }
+
+  async function deleteMedia(settings, id) {
+    if (!configured(settings)) return { skipped: true };
+    return doFetch(settings, '/api/media/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: authHeaders(settings),
+    });
+  }
+
+  async function reorderMedia(settings, ids) {
+    if (!configured(settings)) return { skipped: true };
+    return doFetch(settings, '/api/media/order', {
+      method: 'PUT',
+      headers: authHeaders(settings),
+      body: JSON.stringify({ order: ids }),
+    });
+  }
+
+  // Public read URL — usable as <img src> / <video src> since it doesn't
+  // require auth. Uses the account's own slug from the session bundle.
+  function mediaUrl(settings, id) {
+    return baseUrl(settings) + '/api/' + encodeURIComponent(settings.slug) + '/media/' + encodeURIComponent(id);
+  }
+
   window.AG_SYNC = {
     login, logout,
     pushBusy, pushConfig, fetchInbox, decide, resetRemote,
+    fetchMedia, uploadMedia, deleteMedia, reorderMedia, mediaUrl,
     configured, debounce, busyPayload, configPayload,
     SessionExpiredError,
   };

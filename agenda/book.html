@@ -77,6 +77,8 @@
   <h1>Alege un slot</h1>
   <p class="sub">Completează cererea. Vei primi un link de status după trimitere.</p>
 
+  <p class="sub" style="margin-top:10px"><a id="album-link" class="album-link" href="#" style="color:var(--accent);text-decoration:none;font-weight:500;">Vezi album →</a></p>
+
   <div id="content"><div class="card"><div class="empty"><h2>Se încarcă…</h2></div></div></div>
 </div>
 
@@ -94,6 +96,8 @@
     app.innerHTML = '<div class="card"><div class="empty"><h2>Link invalid</h2></div></div>';
     return;
   }
+  const albumLink = document.getElementById('album-link');
+  if (albumLink) albumLink.href = '/book/' + encodeURIComponent(slug) + '/album';
 
   const state = {
     availability: null,

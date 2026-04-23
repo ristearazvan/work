@@ -30,6 +30,18 @@ async function ipHash(request) {
 const SLUG_RE = /^[a-z0-9-]{2,40}$/;
 const SESSION_TTL_S = 30 * 86400;
 
+// ─────────────────────────────────────────────
+// Media constants
+// ─────────────────────────────────────────────
+const MEDIA_LIMIT_BYTES = 500 * 1024 * 1024;  // 500 MB per account
+const ALLOWED_MEDIA = {
+  'image/jpeg': { kind: 'image', max: 10 * 1024 * 1024, ext: 'jpg' },
+  'image/png':  { kind: 'image', max: 10 * 1024 * 1024, ext: 'png' },
+  'image/webp': { kind: 'image', max: 10 * 1024 * 1024, ext: 'webp' },
+  'video/mp4':  { kind: 'video', max: 50 * 1024 * 1024, ext: 'mp4' },
+  'video/webm': { kind: 'video', max: 50 * 1024 * 1024, ext: 'webm' },
+};
+
 function b64ToBytes(s) {
   const bin = atob(s);
   const out = new Uint8Array(bin.length);
@@ -483,6 +495,175 @@ async function handlePostDecision(request, env, id) {
 }
 
 // ─────────────────────────────────────────────
+// Media (per-account album — R2-backed, D1-cataloged)
+// ─────────────────────────────────────────────
+async function handleGetMyMedia(request, env) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+  const { results } = await env.DB.prepare(
+    `SELECT id, kind, mime_type, size_bytes, original_name, display_order, uploaded_at
+       FROM media WHERE account_id = ?
+      ORDER BY display_order ASC, uploaded_at DESC`
+  ).bind(auth.account_id).all();
+  const items = results || [];
+  const usedBytes = items.reduce((s, r) => s + r.size_bytes, 0);
+  return json({ items, used_bytes: usedBytes, limit_bytes: MEDIA_LIMIT_BYTES });
+}
+
+async function handlePostMedia(request, env) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+
+  const mimeType = (request.headers.get('content-type') || '').split(';')[0].trim();
+  const spec = ALLOWED_MEDIA[mimeType];
+  if (!spec) return bad('invalid_mime', 415);
+
+  const size = Number(request.headers.get('content-length'));
+  if (!Number.isFinite(size) || size <= 0) return bad('invalid_size');
+  if (size > spec.max) return bad('file_too_large', 413);
+
+  const usedRow = await env.DB.prepare(
+    'SELECT COALESCE(SUM(size_bytes), 0) AS used FROM media WHERE account_id = ?'
+  ).bind(auth.account_id).first();
+  const used = Number(usedRow?.used) || 0;
+  if (used + size > MEDIA_LIMIT_BYTES) {
+    return json({ error: 'quota_exceeded', used_bytes: used, limit_bytes: MEDIA_LIMIT_BYTES }, { status: 413 });
+  }
+
+  const id = uid();
+  const r2Key = `${auth.account_id}/${id}.${spec.ext}`;
+  const origName = (request.headers.get('x-filename') || '').slice(0, 200);
+
+  await env.MEDIA.put(r2Key, request.body, {
+    httpMetadata: { contentType: mimeType },
+  });
+
+  const orderRow = await env.DB.prepare(
+    'SELECT COALESCE(MAX(display_order), -1) AS m FROM media WHERE account_id = ?'
+  ).bind(auth.account_id).first();
+  const order = (Number(orderRow?.m) ?? -1) + 1;
+  const now = Math.floor(Date.now() / 1000);
+
+  await env.DB.prepare(
+    `INSERT INTO media (id, account_id, r2_key, kind, mime_type, size_bytes, original_name, display_order, uploaded_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, auth.account_id, r2Key, spec.kind, mimeType, size, origName, order, now).run();
+
+  return json({
+    id, kind: spec.kind, mime_type: mimeType, size_bytes: size,
+    original_name: origName, display_order: order, uploaded_at: now,
+  });
+}
+
+async function handleDeleteMedia(request, env, id) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+  const row = await env.DB.prepare(
+    'SELECT r2_key FROM media WHERE id = ? AND account_id = ?'
+  ).bind(id, auth.account_id).first();
+  if (!row) return bad('not_found', 404);
+  await env.MEDIA.delete(row.r2_key);
+  await env.DB.prepare(
+    'DELETE FROM media WHERE id = ? AND account_id = ?'
+  ).bind(id, auth.account_id).run();
+  return json({ ok: true });
+}
+
+async function handlePutMediaOrder(request, env) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+  let body;
+  try { body = await request.json(); } catch { return bad('invalid_json'); }
+  if (!Array.isArray(body.order)) return bad('invalid_order');
+  const ids = body.order.filter(x => typeof x === 'string' && /^[a-f0-9]{32}$/.test(x)).slice(0, 500);
+  if (!ids.length) return json({ ok: true });
+
+  // Scope to this account's ids only — silently drop any that aren't owned.
+  const placeholders = ids.map(() => '?').join(',');
+  const { results } = await env.DB.prepare(
+    `SELECT id FROM media WHERE account_id = ? AND id IN (${placeholders})`
+  ).bind(auth.account_id, ...ids).all();
+  const owned = new Set((results || []).map(r => r.id));
+
+  const stmts = [];
+  let order = 0;
+  for (const id of ids) {
+    if (!owned.has(id)) continue;
+    stmts.push(env.DB.prepare(
+      'UPDATE media SET display_order = ? WHERE id = ? AND account_id = ?'
+    ).bind(order++, id, auth.account_id));
+  }
+  if (stmts.length) await env.DB.batch(stmts);
+  return json({ ok: true });
+}
+
+async function handlePublicListMedia(request, env, slug) {
+  const accountId = await resolveSlug(env, slug);
+  if (!accountId) return bad('not_found', 404);
+  const { results } = await env.DB.prepare(
+    `SELECT id, kind, mime_type FROM media WHERE account_id = ?
+      ORDER BY display_order ASC, uploaded_at DESC`
+  ).bind(accountId).all();
+  return json({ items: results || [] });
+}
+
+// Stream R2 bytes, honoring HTTP Range so <video> can seek.
+async function handlePublicGetMedia(request, env, slug, id) {
+  const accountId = await resolveSlug(env, slug);
+  if (!accountId) return bad('not_found', 404);
+  const row = await env.DB.prepare(
+    'SELECT r2_key, mime_type, size_bytes FROM media WHERE id = ? AND account_id = ?'
+  ).bind(id, accountId).first();
+  if (!row) return bad('not_found', 404);
+
+  const size = row.size_bytes;
+  const common = {
+    'content-type': row.mime_type,
+    'accept-ranges': 'bytes',
+    'cache-control': 'public, max-age=31536000, immutable',
+  };
+
+  const rangeHeader = request.headers.get('range');
+  if (rangeHeader) {
+    const m = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader);
+    if (!m) {
+      return new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}` } });
+    }
+    let start, end;
+    if (m[1] === '' && m[2] !== '') {
+      // Suffix range: "-N" = last N bytes.
+      const n = Number(m[2]);
+      start = Math.max(0, size - n);
+      end = size - 1;
+    } else {
+      start = m[1] === '' ? 0 : Number(m[1]);
+      end = m[2] === '' ? size - 1 : Number(m[2]);
+    }
+    if (!(start <= end && end < size)) {
+      return new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}` } });
+    }
+    const length = end - start + 1;
+    const obj = await env.MEDIA.get(row.r2_key, { range: { offset: start, length } });
+    if (!obj) return bad('not_found', 404);
+    return new Response(obj.body, {
+      status: 206,
+      headers: {
+        ...common,
+        'content-length': String(length),
+        'content-range': `bytes ${start}-${end}/${size}`,
+      },
+    });
+  }
+
+  const obj = await env.MEDIA.get(row.r2_key);
+  if (!obj) return bad('not_found', 404);
+  return new Response(obj.body, {
+    status: 200,
+    headers: { ...common, 'content-length': String(size) },
+  });
+}
+
+// ─────────────────────────────────────────────
 // Router
 // ─────────────────────────────────────────────
 export default {
@@ -511,6 +692,14 @@ export default {
       if (reqMatch && request.method === 'POST') {
         return await handlePostRequest(request, env, reqMatch[1]);
       }
+      const pubMediaGet = pathname.match(/^\/api\/([a-z0-9-]+)\/media\/([a-f0-9]{32})$/);
+      if (pubMediaGet && request.method === 'GET') {
+        return await handlePublicGetMedia(request, env, pubMediaGet[1], pubMediaGet[2]);
+      }
+      const pubMediaList = pathname.match(/^\/api\/([a-z0-9-]+)\/media$/);
+      if (pubMediaList && request.method === 'GET') {
+        return await handlePublicListMedia(request, env, pubMediaList[1]);
+      }
       // Status lookup by unique token — no slug needed.
       const statusMatch = pathname.match(/^\/api\/requests\/([A-Za-z0-9]+)$/);
       if (statusMatch && request.method === 'GET') {
@@ -530,6 +719,19 @@ export default {
       if (pathname === '/api/reset' && request.method === 'POST') {
         return await handlePostReset(request, env);
       }
+      if (pathname === '/api/media' && request.method === 'GET') {
+        return await handleGetMyMedia(request, env);
+      }
+      if (pathname === '/api/media' && request.method === 'POST') {
+        return await handlePostMedia(request, env);
+      }
+      if (pathname === '/api/media/order' && request.method === 'PUT') {
+        return await handlePutMediaOrder(request, env);
+      }
+      const mediaDelete = pathname.match(/^\/api\/media\/([a-f0-9]{32})$/);
+      if (mediaDelete && request.method === 'DELETE') {
+        return await handleDeleteMedia(request, env, mediaDelete[1]);
+      }
       const decisionMatch = pathname.match(/^\/api\/requests\/([A-Za-z0-9]+)\/decision$/);
       if (decisionMatch && request.method === 'POST') {
         return await handlePostDecision(request, env, decisionMatch[1]);
@@ -542,6 +744,10 @@ export default {
       const bookStatus = pathname.match(/^\/book\/([a-z0-9-]+)\/status\/([A-Za-z0-9]+)\/?$/);
       if (bookStatus) {
         return env.ASSETS.fetch(new Request(new URL('/book-status.html', url), request));
+      }
+      const bookAlbum = pathname.match(/^\/book\/([a-z0-9-]+)\/album\/?$/);
+      if (bookAlbum) {
+        return env.ASSETS.fetch(new Request(new URL('/book-album.html', url), request));
       }
       const bookPage = pathname.match(/^\/book\/([a-z0-9-]+)\/?$/);
       if (bookPage) {

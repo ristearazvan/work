@@ -309,10 +309,11 @@ function App() {
   else if (tab === 'money') screen = <AddIncomeScreen c={c} state={state} onCancel={backHome} onSave={saveIncome} />;
   else if (tab === 'stats') screen = <AnalyticsScreen c={c} state={state} />;
   else if (tab === 'flagged') screen = <FlaggedScreen c={c} state={state} onBack={backHome} onAdd={addFlagged} onRemove={removeFlagged} />;
-  else if (tab === 'settings') screen = <SettingsScreen c={c} state={state} onBack={backHome} onUpdateSettings={updateSettings} onSyncNow={pushAll} syncStatus={syncStatus} onLogout={handleLogout} />;
+  else if (tab === 'settings') screen = <SettingsScreen c={c} state={state} onBack={backHome} onUpdateSettings={updateSettings} onSyncNow={pushAll} syncStatus={syncStatus} onLogout={handleLogout} onOpenAlbum={() => setTab('album')} />;
+  else if (tab === 'album') screen = <AlbumScreen c={c} state={state} onBack={() => setTab('settings')} onSessionExpired={handleLogout} />;
   else if (tab === 'inbox') screen = <InboxScreen c={c} state={state} onBack={backHome} onRefresh={refreshInbox} onApprove={approveRequest} onReject={rejectRequest} refreshing={refreshingInbox} />;
 
-  const hiddenTabs = ['detail', 'flagged', 'settings', 'inbox', 'new'];
+  const hiddenTabs = ['detail', 'flagged', 'settings', 'album', 'inbox', 'new'];
   const bottomTab = hiddenTabs.includes(tab) ? null : tab === 'money' ? 'money' : tab;
 
   return (

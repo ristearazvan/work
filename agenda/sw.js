@@ -1,5 +1,5 @@
 // Agenda — offline shell service worker
-const CACHE = 'agenda-v17';
+const CACHE = 'agenda-v18';
 const ASSETS = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const ASSETS = [
   './js/screens-secondary.jsx',
   './js/screens-settings.jsx',
   './js/screen-login.jsx',
+  './js/screen-album.jsx',
   './js/app.jsx',
   './icons/icon-192.png',
   './icons/icon-512.png',
