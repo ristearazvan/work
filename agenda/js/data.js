@@ -11,6 +11,10 @@ const STATE_KEY_PREFIX = 'agenda-state-v1:';
 // persisting per-slug state to avoid drift between the two stores.
 const SESSION_FIELDS = ['session', 'sessionExpiresAt', 'username', 'slug', 'workerUrl'];
 
+// Scrub the pre-migration shared-state key on boot. Harmless if it's already
+// gone; on upgraded devices it reclaims the quota and prevents confusion.
+try { localStorage.removeItem('agenda-state-v1'); } catch (e) {}
+
 // ────────────────────────────────────────────────────────────────
 // Romanian UI strings
 // ────────────────────────────────────────────────────────────────
