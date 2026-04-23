@@ -146,8 +146,8 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
               const h = s.hours?.[dow];
               const closed = !h;
               return (
-                <div key={dow} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${c.hairline2}` }}>
-                  <div style={{ width: 70, fontSize: 12, color: c.ink2 }}>{T.weekdayLong[dow]}</div>
+                <div key={dow} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 6, padding: '8px 0', borderTop: `1px solid ${c.hairline2}` }}>
+                  <div style={{ flex: '1 0 100%', fontSize: 11, color: c.muted, letterSpacing: 0.8, textTransform: 'uppercase', fontWeight: 600 }}>{T.weekdayLong[dow]}</div>
                   {closed ? (
                     <>
                       <div style={{ flex: 1, fontSize: 12, color: c.muted, fontStyle: 'italic' }}>{T.closed}</div>
@@ -156,12 +156,12 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
                   ) : (
                     <>
                       <input type="time" value={fmtTime(h.open)} onChange={e => setHours(dow, { open: parseTime(e.target.value) })}
-                        style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px', flex: 1 }} />
+                        style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px', flex: '1 1 90px', minWidth: 0 }} />
                       <span style={{ fontSize: 11, color: c.muted }}>–</span>
                       <input type="time" value={fmtTime(h.close)} onChange={e => setHours(dow, { close: parseTime(e.target.value) })}
-                        style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px', flex: 1 }} />
-                      <button onClick={() => toggleClosed(dow)} style={miniBtn(c)} title={T.close}>{T.close}</button>
-                      <button onClick={() => copyToAll(dow)} style={miniBtn(c)} title={T.copyToAll}>⇅</button>
+                        style={{ ...inp(c, FONTS.ui, 13), padding: '8px 10px', flex: '1 1 90px', minWidth: 0 }} />
+                      <button onClick={() => toggleClosed(dow)} style={miniBtn(c)} title={T.close} aria-label={T.close}>✕</button>
+                      <button onClick={() => copyToAll(dow)} style={miniBtn(c)} title={T.copyToAll} aria-label={T.copyToAll}>⇅</button>
                     </>
                   )}
                 </div>
