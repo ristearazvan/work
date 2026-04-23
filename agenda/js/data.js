@@ -230,27 +230,13 @@ const DEFAULT_SETTINGS = {
   lastSyncError: '',
 };
 
+// Empty template used for a fresh account's first login. Settings keep their
+// defaults (hours, prices, etc.); every domain list starts empty.
 const SEED = {
   settings: DEFAULT_SETTINGS,
-  appointments: [
-    { id: 'a1', date: todayISO(0),  time: '11:00', end: '12:30', duration: 90, contact: 'M.',     service: 'Standard', rate: 400, locationType: 'La mine',   address: 'Apt. — principal', method: 'Numerar', status: 'confirmat',    notes: 'Client fidel — a 4-a vizită. Liniștit, politicos.' },
-    { id: 'a2', date: todayISO(0),  time: '14:30', end: '15:30', duration: 60, contact: 'J. R.',  service: 'Standard', rate: 300, locationType: 'Deplasare', address: 'Hotel Arts',       method: 'Transfer', status: 'confirmat',    notes: 'Verificat. Prima vizită.' },
-    { id: 'a3', date: todayISO(0),  time: '18:00', end: '20:00', duration: 120, contact: 'T.',    service: 'Extins',   rate: 700, locationType: 'La mine',   address: 'Apt. — principal', method: 'Numerar', status: 'în așteptare', notes: 'Avans în curs.' },
-    { id: 'a4', date: todayISO(0),  time: '22:00', end: '23:00', duration: 60, contact: 'Nou — D.', service: 'Standard', rate: 350, locationType: 'Deplasare', address: 'Hotel W', method: 'Transfer', status: 'verificare', notes: 'Aștept referințe.' },
-    { id: 'a5', date: todayISO(-1), time: '19:00', end: '20:00', duration: 60, contact: 'S. K.',  service: 'Standard', rate: 500, locationType: 'La mine',   address: 'Apt. — principal', method: 'Numerar', status: 'finalizat',    notes: '' },
-    { id: 'a6', date: todayISO(-2), time: '15:00', end: '16:00', duration: 60, contact: 'R.',     service: 'Standard', rate: 400, locationType: 'La mine',   address: 'Apt. — principal', method: 'Transfer', status: 'finalizat',    notes: '' },
-  ],
-  income: [
-    { id: 'i1', date: todayISO(0),  contact: 'M.',     amount: 400, tip: 0,  method: 'Numerar',  apptId: 'a1' },
-    { id: 'i2', date: todayISO(-1), contact: 'S. K.',  amount: 500, tip: 0,  method: 'Numerar',  apptId: 'a5' },
-    { id: 'i3', date: todayISO(-2), contact: 'R.',     amount: 400, tip: 20, method: 'Transfer', apptId: 'a6' },
-    { id: 'i4', date: todayISO(-3), contact: 'Nou — L.', amount: 350, tip: 0, method: 'Numerar', apptId: null },
-  ],
-  flagged: [
-    { id: 'f1', ref: '+40 7** *** 421', reason: 'Raportat — pierde timp',    date: todayISO(-6),  severity: 'amber' },
-    { id: 'f2', ref: '@user_****',      reason: 'Raportat — agresiv',         date: todayISO(-10), severity: 'red' },
-    { id: 'f3', ref: '+40 7** *** 903', reason: 'Nu s-a prezentat × 2',       date: todayISO(-19), severity: 'amber' },
-  ],
+  appointments: [],
+  income: [],
+  flagged: [],
   inbox: [],
 };
 

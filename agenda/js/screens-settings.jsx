@@ -173,10 +173,10 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
               if (!window.confirm(T.resetRemoteFailed + ' (' + (e.message || e) + ')')) return;
             }
             try {
-              localStorage.setItem('agenda-state-v1', JSON.stringify({
+              window.AG_STORE.saveStateFor(s.slug, {
                 settings: window.AG_STORE.DEFAULT_SETTINGS,
                 appointments: [], income: [], flagged: [], inbox: [],
-              }));
+              });
             } catch (e) {}
             window.location.reload();
           }} disabled={!hasToken} style={{
