@@ -279,8 +279,9 @@ async function computeAvailability(env, accountId) {
   ).bind(accountId).first();
   if (!cfg) return {
     enabled: false, public_enabled: false, bookings_enabled: false,
-    page_title: '', weekly_hours: {}, days: [], services: [], service_prices: {},
+    page_title: '', page_notes: '', weekly_hours: {}, days: [], services: [], service_prices: {},
     media_count: 0, album_thumb_id: null,
+    has_background: false, background_updated_at: 0,
     buffer_min: 15, advance_min: 30, max_days: 7,
   };
 
@@ -291,14 +292,18 @@ async function computeAvailability(env, accountId) {
   const services = JSON.parse(cfg.services_json || '[]');
   const servicePrices = parseServicePricesJson(cfg.service_prices_json);
   const pageTitle = (cfg.page_title || '').toString().trim().slice(0, 60);
+  const pageNotes = (cfg.page_notes || '').toString().slice(0, 2000);
   const publicEnabled = !!cfg.public_enabled;
   const bookingsEnabled = cfg.bookings_enabled == null ? true : !!cfg.bookings_enabled;
+  const hasBackground = !!cfg.background_r2_key;
+  const backgroundUpdatedAt = Number(cfg.background_updated_at) || 0;
 
   if (!publicEnabled) {
     return {
       enabled: false, public_enabled: false, bookings_enabled: bookingsEnabled,
-      page_title: pageTitle, weekly_hours: {}, days: [], services, service_prices: servicePrices,
+      page_title: pageTitle, page_notes: pageNotes, weekly_hours: {}, days: [], services, service_prices: servicePrices,
       media_count: 0, album_thumb_id: null,
+      has_background: hasBackground, background_updated_at: backgroundUpdatedAt,
       buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays,
     };
   }
@@ -308,8 +313,9 @@ async function computeAvailability(env, accountId) {
   if (!bookingsEnabled) {
     return {
       enabled: false, public_enabled: true, bookings_enabled: false,
-      page_title: pageTitle, weekly_hours: hours, days: [], services, service_prices: servicePrices,
+      page_title: pageTitle, page_notes: pageNotes, weekly_hours: hours, days: [], services, service_prices: servicePrices,
       media_count: media.count, album_thumb_id: media.thumb_id,
+      has_background: hasBackground, background_updated_at: backgroundUpdatedAt,
       buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays,
     };
   }
@@ -380,11 +386,14 @@ async function computeAvailability(env, accountId) {
     public_enabled: true,
     bookings_enabled: true,
     page_title: pageTitle,
+    page_notes: pageNotes,
     weekly_hours: hours,
     services,
     service_prices: servicePrices,
     media_count: media.count,
     album_thumb_id: media.thumb_id,
+    has_background: hasBackground,
+    background_updated_at: backgroundUpdatedAt,
     buffer_min: bufferMin,
     advance_min: advanceMin,
     max_days: maxDays,
@@ -466,6 +475,30 @@ async function handleGetRequestStatus(request, env, token) {
   return json(row);
 }
 
+async function handleGetConfig(request, env) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+  const cfg = await env.DB.prepare(
+    'SELECT * FROM config WHERE account_id = ?'
+  ).bind(auth.account_id).first();
+  if (!cfg) return json({ exists: false });
+  return json({
+    exists: true,
+    hours: parseHoursJson(cfg.hours_json),
+    buffer_min: cfg.buffer_min,
+    advance_min: cfg.advance_min,
+    max_days: cfg.max_days,
+    public_enabled: !!cfg.public_enabled,
+    bookings_enabled: cfg.bookings_enabled == null ? true : !!cfg.bookings_enabled,
+    services: JSON.parse(cfg.services_json || '[]'),
+    page_title: cfg.page_title || '',
+    page_notes: cfg.page_notes || '',
+    service_prices: parseServicePricesJson(cfg.service_prices_json),
+    has_background: !!cfg.background_r2_key,
+    background_updated_at: Number(cfg.background_updated_at) || 0,
+  });
+}
+
 async function handlePutConfig(request, env) {
   const auth = await requireSession(request, env);
   if (!auth.account_id) return auth.response;
@@ -487,17 +520,18 @@ async function handlePutConfig(request, env) {
   const maxDays    = Math.max(1, Math.min(30,  Number(body.max_days)    ?? 7));
   const enabled    = body.public_enabled ? 1 : 0;
   const bookingsOn = body.bookings_enabled == null ? 1 : (body.bookings_enabled ? 1 : 0);
-  const services = Array.isArray(body.services) && body.services.length
+  const services = Array.isArray(body.services)
     ? body.services.map(s => String(s).slice(0, 40)).slice(0, 12)
-    : ['Standard', 'Extins', 'Cină', 'Peste noapte'];
+    : [];
   const pageTitle = (body.page_title || '').toString().trim().slice(0, 60) || null;
+  const pageNotes = (body.page_notes || '').toString().slice(0, 2000) || null;
   const servicePrices = normalizeServicePrices(body.service_prices);
 
   await env.DB.prepare(
     `INSERT INTO config (account_id, hours_json, buffer_min, advance_min, max_days,
                          public_enabled, bookings_enabled, services_json,
-                         page_title, service_prices_json, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         page_title, page_notes, service_prices_json, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(account_id) DO UPDATE SET
        hours_json = excluded.hours_json,
        buffer_min = excluded.buffer_min,
@@ -507,12 +541,13 @@ async function handlePutConfig(request, env) {
        bookings_enabled = excluded.bookings_enabled,
        services_json = excluded.services_json,
        page_title = excluded.page_title,
+       page_notes = excluded.page_notes,
        service_prices_json = excluded.service_prices_json,
        updated_at = excluded.updated_at`
   ).bind(
     auth.account_id,
     JSON.stringify(normalized), bufferMin, advanceMin, maxDays, enabled, bookingsOn,
-    JSON.stringify(services), pageTitle, JSON.stringify(servicePrices),
+    JSON.stringify(services), pageTitle, pageNotes, JSON.stringify(servicePrices),
     Math.floor(Date.now() / 1000)
   ).run();
 
@@ -691,6 +726,97 @@ async function handlePutMediaOrder(request, env) {
   return json({ ok: true });
 }
 
+// ─────────────────────────────────────────────
+// Page background — one image per account, shown behind the /book/<slug> page
+// ─────────────────────────────────────────────
+const ALLOWED_BG_MIMES = {
+  'image/jpeg': { ext: 'jpg' },
+  'image/png':  { ext: 'png' },
+  'image/webp': { ext: 'webp' },
+};
+const BG_MAX_BYTES = 10 * 1024 * 1024;
+
+async function handlePostBackground(request, env) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+
+  const mimeType = (request.headers.get('content-type') || '').split(';')[0].trim();
+  const spec = ALLOWED_BG_MIMES[mimeType];
+  if (!spec) return bad('invalid_mime', 415);
+
+  const size = Number(request.headers.get('content-length'));
+  if (!Number.isFinite(size) || size <= 0) return bad('invalid_size');
+  if (size > BG_MAX_BYTES) return bad('file_too_large', 413);
+
+  // Fetch any existing key so we can delete the old object after the new one lands.
+  const prev = await env.DB.prepare(
+    'SELECT background_r2_key FROM config WHERE account_id = ?'
+  ).bind(auth.account_id).first();
+
+  const r2Key = `${auth.account_id}/background-${uid()}.${spec.ext}`;
+  await env.MEDIA.put(r2Key, request.body, {
+    httpMetadata: { contentType: mimeType },
+  });
+
+  const now = Math.floor(Date.now() / 1000);
+  // UPSERT: if config doesn't exist yet, seed it with an empty hours map so
+  // the NOT NULL constraint holds; later config PUTs will overwrite.
+  await env.DB.prepare(
+    `INSERT INTO config (account_id, hours_json, updated_at,
+                         background_r2_key, background_mime_type, background_size, background_updated_at)
+     VALUES (?, '{}', ?, ?, ?, ?, ?)
+     ON CONFLICT(account_id) DO UPDATE SET
+       background_r2_key = excluded.background_r2_key,
+       background_mime_type = excluded.background_mime_type,
+       background_size = excluded.background_size,
+       background_updated_at = excluded.background_updated_at`
+  ).bind(auth.account_id, now, r2Key, mimeType, size, now).run();
+
+  if (prev?.background_r2_key && prev.background_r2_key !== r2Key) {
+    await env.MEDIA.delete(prev.background_r2_key).catch(() => {});
+  }
+
+  return json({ ok: true, updated_at: now, size_bytes: size });
+}
+
+async function handleDeleteBackground(request, env) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+  const row = await env.DB.prepare(
+    'SELECT background_r2_key FROM config WHERE account_id = ?'
+  ).bind(auth.account_id).first();
+  if (row?.background_r2_key) {
+    await env.MEDIA.delete(row.background_r2_key).catch(() => {});
+  }
+  await env.DB.prepare(
+    `UPDATE config SET background_r2_key = NULL, background_mime_type = NULL,
+                       background_size = NULL, background_updated_at = NULL
+      WHERE account_id = ?`
+  ).bind(auth.account_id).run();
+  return json({ ok: true });
+}
+
+async function handlePublicGetBackground(request, env, slug) {
+  const accountId = await resolveSlug(env, slug);
+  if (!accountId) return bad('not_found', 404);
+  const row = await env.DB.prepare(
+    'SELECT background_r2_key, background_mime_type, background_size FROM config WHERE account_id = ?'
+  ).bind(accountId).first();
+  if (!row || !row.background_r2_key) return bad('not_found', 404);
+
+  const obj = await env.MEDIA.get(row.background_r2_key);
+  if (!obj) return bad('not_found', 404);
+  return new Response(obj.body, {
+    status: 200,
+    headers: {
+      'content-type': row.background_mime_type || 'application/octet-stream',
+      'content-length': String(row.background_size || 0),
+      // URLs include a ?v=<updated_at> query, so we can cache aggressively.
+      'cache-control': 'public, max-age=31536000, immutable',
+    },
+  });
+}
+
 async function handlePublicListMedia(request, env, slug) {
   const accountId = await resolveSlug(env, slug);
   if (!accountId) return bad('not_found', 404);
@@ -790,6 +916,10 @@ export default {
       if (pubMediaGet && request.method === 'GET') {
         return await handlePublicGetMedia(request, env, pubMediaGet[1], pubMediaGet[2]);
       }
+      const pubBackground = pathname.match(/^\/api\/([a-z0-9-]+)\/background$/);
+      if (pubBackground && request.method === 'GET') {
+        return await handlePublicGetBackground(request, env, pubBackground[1]);
+      }
       const pubMediaList = pathname.match(/^\/api\/([a-z0-9-]+)\/media$/);
       if (pubMediaList && request.method === 'GET') {
         return await handlePublicListMedia(request, env, pubMediaList[1]);
@@ -801,6 +931,9 @@ export default {
       }
 
       // Provider API (session-scoped)
+      if (pathname === '/api/config' && request.method === 'GET') {
+        return await handleGetConfig(request, env);
+      }
       if (pathname === '/api/config' && request.method === 'PUT') {
         return await handlePutConfig(request, env);
       }
@@ -821,6 +954,12 @@ export default {
       }
       if (pathname === '/api/media/order' && request.method === 'PUT') {
         return await handlePutMediaOrder(request, env);
+      }
+      if (pathname === '/api/background' && request.method === 'POST') {
+        return await handlePostBackground(request, env);
+      }
+      if (pathname === '/api/background' && request.method === 'DELETE') {
+        return await handleDeleteBackground(request, env);
       }
       const mediaDelete = pathname.match(/^\/api\/media\/([a-f0-9]{32})$/);
       if (mediaDelete && request.method === 'DELETE') {

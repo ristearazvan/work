@@ -13,7 +13,7 @@
 <style>
   :root {
     --bg: #F5F3EE; --surface: #FFFFFF; --surface2: #FAF8F3;
-    --ink: #1C1C1A; --ink2: #3A3A36; --muted: #8A867C;
+    --ink: #000000; --ink2: #111110; --muted: #5A5852;
     --hair: #E5E1D8; --hair2: #EFEBE2;
     --accent: #556B3D; --accentSoft: #EAEEE1;
     --danger: #8B3A2E; --warn: #A67C3A;
@@ -22,8 +22,64 @@
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); }
-  #app { max-width: 520px; margin: 0 auto; padding: 20px 20px 60px; min-height: 100vh; }
+  #app { max-width: 520px; margin: 0 auto; padding: 20px 20px 60px; min-height: 100vh; position: relative; z-index: 1; }
   @media (min-width: 521px) { body { background: #E5E1D8; } #app { background: var(--bg); box-shadow: 0 0 0 1px rgba(0,0,0,0.06); } }
+  /* Custom background image (opt-in via body.has-bg). Sits behind #app via a
+     fixed pseudo-element so it doesn't scroll, with a white-ish scrim on narrow
+     screens to keep the single-column content readable. */
+  body.has-bg::before {
+    content: ''; position: fixed; inset: 0; z-index: 0;
+    background: var(--custom-bg) center/cover no-repeat;
+  }
+  body.has-bg::after {
+    content: ''; position: fixed; inset: 0; z-index: 0;
+    background: rgba(245, 243, 238, 0.55);
+  }
+  @media (min-width: 521px) {
+    body.has-bg::after { background: rgba(229, 225, 216, 0.35); }
+  }
+  /* When a background image is active, let it show through: the app column and
+     every surface-coloured block become translucent with a light blur. */
+  body.has-bg #app { background: transparent !important; box-shadow: none !important; }
+  body.has-bg .card,
+  body.has-bg .album-cta,
+  body.has-bg .ro-chip,
+  body.has-bg .slot,
+  body.has-bg .chip {
+    background: rgba(255, 255, 255, 0.11);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+  }
+  body.has-bg .slot.active { background: var(--accent); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  body.has-bg .chip.active,
+  body.has-bg .day.active { background: var(--ink); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  body.has-bg .notes-card { background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  body.has-bg .summary { background: rgba(234, 238, 225, 0.18); }
+  body.has-bg .err { background: rgba(248, 234, 230, 0.3); }
+  /* With low card opacity we also lighten the scrim so more of the image comes through. */
+  body.has-bg::after { background: rgba(245, 243, 238, 0.12) !important; }
+  /* Boost text contrast when the background image is showing through the cards. */
+  body.has-bg { color: #000; }
+  body.has-bg h1,
+  body.has-bg .card,
+  body.has-bg .card *,
+  body.has-bg .album-cta,
+  body.has-bg .album-cta * {
+    color: #000;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.65), 0 0 1px rgba(255,255,255,0.85);
+  }
+  body.has-bg .sub,
+  body.has-bg .label,
+  body.has-bg .eyebrow,
+  body.has-bg .ro-day,
+  body.has-bg .muted { color: #333 !important; }
+  body.has-bg .slot,
+  body.has-bg .chip,
+  body.has-bg .day { color: #000; font-weight: 600; }
+  body.has-bg .slot.active,
+  body.has-bg .chip.active,
+  body.has-bg .day.active { color: #fff; text-shadow: none; }
+  body.has-bg .btn-primary { color: #fff; text-shadow: none; }
   h1 { font-family: var(--serif); font-size: 30px; font-weight: 400; letter-spacing: -0.5; margin: 4px 0 6px; line-height: 1.1; }
   .eyebrow { font-size: 11px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; font-weight: 500; }
   .sub { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
@@ -103,6 +159,11 @@
   .album-cta .count { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .album-cta .arrow { flex: 0 0 auto; font-size: 18px; color: var(--accent); font-weight: 600; }
   .album-hidden { display: none; }
+  .notes { font-size: 14px; color: var(--ink2); line-height: 1.55; white-space: pre-line; word-wrap: break-word; overflow-wrap: anywhere;
+           max-height: 260px; overflow-y: auto; padding-right: 4px; }
+  .notes::-webkit-scrollbar { width: 6px; }
+  .notes::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.22); border-radius: 3px; }
+  .notes::-webkit-scrollbar-track { background: transparent; }
 </style>
 </head>
 <body>
@@ -140,6 +201,18 @@
   }
   const albumCta = document.getElementById('album-cta');
   if (albumCta) albumCta.href = '/book/' + encodeURIComponent(slug) + '/album';
+
+  function applyBackground(d) {
+    if (!d || !d.has_background) {
+      document.body.classList.remove('has-bg');
+      document.body.style.removeProperty('--custom-bg');
+      return;
+    }
+    const v = Number(d.background_updated_at) || 0;
+    const url = '/api/' + encodeURIComponent(slug) + '/background' + (v ? '?v=' + v : '');
+    document.body.style.setProperty('--custom-bg', `url("${url}")`);
+    document.body.classList.add('has-bg');
+  }
 
   function renderAlbumCta(d) {
     if (!albumCta) return;
@@ -223,6 +296,7 @@
       }
       const data = await r.json();
       state.availability = data;
+      applyBackground(data);
       renderAlbumCta(data);
       const bookable = bookableServices(data);
       if (data.enabled && bookable.length) {
@@ -250,7 +324,7 @@
   }
 
   function renderReadOnly(d) {
-    setHeader('Program', d.page_title || 'Program', 'Programările online nu sunt disponibile momentan.');
+    setHeader('Program', d.page_title || 'Program', '');
     const hours = d.weekly_hours || {};
     const services = d.services || [];
     const hoursRows = [1,2,3,4,5,6,0].map(dow => {
@@ -262,6 +336,7 @@
       ? services.map(svc => renderServiceBlock(d, svc)).join('')
       : `<span class="sub" style="margin:0">—</span>`;
     app.innerHTML = `
+      ${notesCardHtml(d)}
       <div class="card">
         <div class="label">Program</div>
         <div class="ro-list">${hoursRows}</div>
@@ -271,6 +346,12 @@
         <div>${servicesHtml}</div>
       </div>
     `;
+  }
+
+  function notesCardHtml(d) {
+    const n = (d.page_notes || '').trim();
+    if (!n) return '';
+    return `<div class="card notes-card"><div class="notes">${escapeHtml(n)}</div></div>`;
   }
 
   function renderServiceBlock(d, svc) {
@@ -336,6 +417,7 @@
     const selectedPrice = priceFor(d, state.service, state.duration);
 
     app.innerHTML = `
+      ${notesCardHtml(d)}
       <div class="card">
         <div class="label">Ziua</div>
         <div class="days">

@@ -52,6 +52,7 @@
       bookings_enabled: settings.bookingsEnabled !== false,
       services: settings.services || [],
       page_title: (settings.pageTitle || '').toString(),
+      page_notes: (settings.pageNotes || '').toString(),
       service_prices: settings.servicePrices || {},
     };
   }
@@ -101,6 +102,14 @@
       method: 'PUT',
       headers: authHeaders(settings),
       body: JSON.stringify(busyPayload(appointments)),
+    });
+  }
+
+  async function fetchConfig(settings) {
+    if (!configured(settings)) return { exists: false };
+    return doFetch(settings, '/api/config', {
+      method: 'GET',
+      headers: authHeaders(settings),
     });
   }
 
@@ -203,6 +212,59 @@
     });
   }
 
+  // Uploads the public page background image. Same XHR pattern as uploadMedia so
+  // we can report progress on large-ish uploads. Resolves with { ok, updated_at }.
+  function uploadBackground(settings, file, onProgress) {
+    return new Promise((resolve, reject) => {
+      if (!configured(settings)) {
+        reject(new Error('not_configured'));
+        return;
+      }
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', baseUrl(settings) + '/api/background', true);
+      xhr.setRequestHeader('authorization', 'Bearer ' + settings.session);
+      xhr.setRequestHeader('content-type', file.type || 'application/octet-stream');
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
+      };
+      xhr.onload = () => {
+        let body = null;
+        try { body = JSON.parse(xhr.responseText); } catch {}
+        if (xhr.status === 401) {
+          reject(new SessionExpiredError());
+          return;
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(body);
+        } else {
+          const err = new Error((body && body.error) || `http_${xhr.status}`);
+          err.status = xhr.status;
+          err.body = body;
+          reject(err);
+        }
+      };
+      xhr.onerror = () => reject(new Error('network_error'));
+      xhr.onabort = () => reject(new Error('aborted'));
+      xhr.send(file);
+    });
+  }
+
+  async function deleteBackground(settings) {
+    if (!configured(settings)) return { skipped: true };
+    return doFetch(settings, '/api/background', {
+      method: 'DELETE',
+      headers: authHeaders(settings),
+    });
+  }
+
+  // Public URL for the admin preview. Includes a cache-busting version so the
+  // preview reflects uploads immediately without a hard refresh.
+  function backgroundUrl(settings, version) {
+    if (!settings.slug) return '';
+    const v = version ? `?v=${encodeURIComponent(version)}` : '';
+    return baseUrl(settings) + '/api/' + encodeURIComponent(settings.slug) + '/background' + v;
+  }
+
   async function deleteMedia(settings, id) {
     if (!configured(settings)) return { skipped: true };
     return doFetch(settings, '/api/media/' + encodeURIComponent(id), {
@@ -228,8 +290,9 @@
 
   window.AG_SYNC = {
     login, logout,
-    pushBusy, pushConfig, fetchInbox, decide, resetRemote,
+    pushBusy, pushConfig, fetchConfig, fetchInbox, decide, resetRemote,
     fetchMedia, uploadMedia, deleteMedia, reorderMedia, mediaUrl,
+    uploadBackground, deleteBackground, backgroundUrl,
     configured, debounce, busyPayload, configPayload,
     SessionExpiredError,
   };

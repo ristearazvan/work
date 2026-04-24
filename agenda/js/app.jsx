@@ -44,18 +44,56 @@ function App() {
   const SYNC = window.AG_SYNC;
   const stateRef = React.useRef(state);
   stateRef.current = state;
+  // Flipped to true right before we apply a server-pulled config to local
+  // state, so the config-push effect skips the resulting change instead of
+  // pushing the just-pulled data straight back.
+  const suppressNextConfigPush = React.useRef(false);
+
+  // Merge server config over a local settings bundle. Server is authoritative
+  // for every synced field — anything deleted locally stays deleted.
+  const applyServerConfig = React.useCallback((settings, cfg) => {
+    const next = { ...settings };
+    if (cfg.hours && typeof cfg.hours === 'object') {
+      next.hours = { ...window.AG_STORE.DEFAULT_HOURS, ...cfg.hours };
+    }
+    if (Number.isFinite(cfg.buffer_min))  next.bufferMin  = cfg.buffer_min;
+    if (Number.isFinite(cfg.advance_min)) next.advanceMin = cfg.advance_min;
+    if (Number.isFinite(cfg.max_days))    next.maxDays    = cfg.max_days;
+    next.publicEnabled   = !!cfg.public_enabled;
+    next.bookingsEnabled = cfg.bookings_enabled !== false;
+    if (Array.isArray(cfg.services)) next.services = cfg.services;
+    next.pageTitle = cfg.page_title || '';
+    next.pageNotes = cfg.page_notes || '';
+    next.servicePrices = window.AG_STORE.normalizeServicePrices(cfg.service_prices || {});
+    // Background is not part of the PUT config payload, but comes back with
+    // the same GET — track it in settings so the UI can show preview/remove.
+    next.hasBackground = !!cfg.has_background;
+    next.backgroundUpdatedAt = Number(cfg.background_updated_at) || 0;
+    return next;
+  }, []);
 
   // Session gate: if no valid session, render the login screen instead of the app.
   const hasSession = !!state && SYNC.configured(state.settings);
 
-  const handleLoggedIn = React.useCallback((sessionData) => {
+  const handleLoggedIn = React.useCallback(async (sessionData) => {
     // Persist the session bundle and load the per-slug state bucket. First
     // login for a slug gets the SEED; subsequent logins restore what was there.
     window.AG_STORE.saveSession(sessionData);
     const base = window.AG_STORE.loadStateFor(sessionData.slug);
-    setState({ ...base, settings: { ...base.settings, ...sessionData } });
+    let merged = { ...base, settings: { ...base.settings, ...sessionData } };
+    // Pull the server-stored config so a fresh device / cleared browser
+    // doesn't resurrect the default services/prices/notes. Non-fatal on failure.
+    try {
+      const cfg = await SYNC.fetchConfig(merged.settings);
+      if (cfg && cfg.exists) {
+        merged = { ...merged, settings: applyServerConfig(merged.settings, cfg) };
+      }
+    } catch (e) { /* keep local fallback */ }
+    suppressNextConfigPush.current = true;
+    didBootPullConfig.current = true;
+    setState(merged);
     setTab('home');
-  }, []);
+  }, [SYNC, applyServerConfig]);
 
   const handleLogout = React.useCallback(async () => {
     const cur = stateRef.current;
@@ -135,13 +173,30 @@ function App() {
   const bookingKey = state ? JSON.stringify({
     h: state.settings.hours, b: state.settings.bufferMin, a: state.settings.advanceMin,
     d: state.settings.maxDays, e: state.settings.publicEnabled, bk: state.settings.bookingsEnabled, s: state.settings.services,
-    pt: state.settings.pageTitle, sp: state.settings.servicePrices,
+    pt: state.settings.pageTitle, pn: state.settings.pageNotes, sp: state.settings.servicePrices,
   }) : '';
   const firstCfgRun = React.useRef(true);
   React.useEffect(() => {
     if (firstCfgRun.current) { firstCfgRun.current = false; return; }
+    if (suppressNextConfigPush.current) { suppressNextConfigPush.current = false; return; }
     pushConfigDebounced();
   }, [bookingKey, pushConfigDebounced]);
+
+  // On boot with an existing session, pull the server's config so this device
+  // reflects settings changed elsewhere (or after a cache clear).
+  const didBootPullConfig = React.useRef(false);
+  React.useEffect(() => {
+    if (!hasSession || didBootPullConfig.current) return;
+    didBootPullConfig.current = true;
+    (async () => {
+      try {
+        const cur = stateRef.current;
+        const cfg = await SYNC.fetchConfig(cur.settings);
+        if (!cfg || !cfg.exists) return;
+        setState(s => s ? ({ ...s, settings: applyServerConfig(s.settings, cfg) }) : s);
+      } catch (e) { handleSyncError(e); }
+    })();
+  }, [hasSession, SYNC, applyServerConfig, handleSyncError]);
 
   // Fetch inbox on mount + whenever user opens it
   const refreshInbox = React.useCallback(async () => {

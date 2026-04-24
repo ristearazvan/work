@@ -98,6 +98,11 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
           </div>
         </Section>
 
+        {/* Page background */}
+        <Section c={c} title={T.bgSection}>
+          <BackgroundEditor c={c} s={s} setS={setS} T={T} />
+        </Section>
+
         {/* Album submenu */}
         <Section c={c} title={T.album}>
           <div style={{ fontSize: 12, color: c.muted, marginBottom: 12, lineHeight: 1.5 }}>{T.albumSub}</div>
@@ -138,6 +143,14 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
               onChange={e => setS({ pageTitle: e.target.value.slice(0, 60) })}
               style={inp(c, FONTS.ui, 14)} />
             <div style={{ fontSize: 11, color: c.muted, marginTop: 6 }}>{T.pageTitleHint}</div>
+          </FieldBlock>
+
+          <FieldBlock label={T.pageNotes}>
+            <textarea maxLength={2000} value={s.pageNotes || ''} placeholder={T.pageNotesPlaceholder}
+              onChange={e => setS({ pageNotes: e.target.value.slice(0, 2000) })}
+              rows={6}
+              style={{ ...inp(c, FONTS.ui, 14), resize: 'vertical', lineHeight: 1.5, height: 180, maxHeight: 320, overflowY: 'auto' }} />
+            <div style={{ fontSize: 11, color: c.muted, marginTop: 6 }}>{T.pageNotesHint}</div>
           </FieldBlock>
 
           <FieldBlock label={T.workingHours}>
@@ -511,6 +524,87 @@ function ServicesEditor({ c, s, setS, T }) {
         }}>+ {T.addService}</button>
       </div>
       {error && <div style={{ fontSize: 11, color: c.danger, marginTop: 6 }}>{error}</div>}
+    </div>
+  );
+}
+
+function BackgroundEditor({ c, s, setS, T }) {
+  const SYNC = window.AG_SYNC;
+  const fileRef = React.useRef(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [progress, setProgress] = React.useState(0);
+  const [error, setError] = React.useState('');
+
+  const hasBg = !!s.hasBackground;
+  // Append the version to bust the browser cache after a replace.
+  const previewUrl = hasBg && s.slug
+    ? SYNC.backgroundUrl(s, s.backgroundUpdatedAt || '')
+    : '';
+
+  const pick = () => fileRef.current && fileRef.current.click();
+
+  const onFile = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    setError('');
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { setError(T.bgUnsupported); return; }
+    if (file.size > 10 * 1024 * 1024) { setError(T.bgTooLarge); return; }
+    setUploading(true);
+    setProgress(0);
+    try {
+      const res = await SYNC.uploadBackground(s, file, (p) => setProgress(p));
+      setS({ hasBackground: true, backgroundUpdatedAt: res?.updated_at || Math.floor(Date.now() / 1000) });
+    } catch (err) {
+      const code = (err && err.body && err.body.error) || err?.message || '';
+      if (code === 'file_too_large') setError(T.bgTooLarge);
+      else if (code === 'invalid_mime') setError(T.bgUnsupported);
+      else setError(`${T.bgError}: ${code}`);
+    } finally {
+      setUploading(false);
+      setProgress(0);
+    }
+  };
+
+  const remove = async () => {
+    if (!window.confirm(T.bgRemoveConfirm)) return;
+    setError('');
+    try {
+      await SYNC.deleteBackground(s);
+      setS({ hasBackground: false, backgroundUpdatedAt: 0 });
+    } catch (err) {
+      setError(`${T.bgError}: ${err?.message || ''}`);
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: c.muted, marginBottom: 12, lineHeight: 1.5 }}>{T.bgHint}</div>
+      <div style={{
+        width: '100%', aspectRatio: '16/9', borderRadius: 3, border: `1px solid ${c.hairline}`,
+        background: previewUrl ? `${c.surface2} center/cover no-repeat url("${previewUrl}")` : c.surface2,
+        marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: c.muted, fontSize: 12,
+      }}>
+        {!previewUrl && !uploading && T.bgNone}
+        {uploading && `${T.bgUploading} ${Math.round(progress * 100)}%`}
+      </div>
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={onFile} style={{ display: 'none' }} />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={pick} disabled={uploading} style={{
+          flex: 1, padding: '12px', border: 'none', background: uploading ? c.hairline : c.accent,
+          borderRadius: 3, fontFamily: FONTS.ui, fontSize: 13, fontWeight: 600, color: '#fff',
+          cursor: uploading ? 'not-allowed' : 'pointer', letterSpacing: 0.3,
+        }}>{hasBg ? T.bgReplace : T.bgUpload}</button>
+        {hasBg && (
+          <button onClick={remove} disabled={uploading} style={{
+            padding: '12px 16px', border: `1px solid ${c.hairline}`, background: 'transparent',
+            borderRadius: 3, fontFamily: FONTS.ui, fontSize: 12, color: c.danger,
+            cursor: uploading ? 'not-allowed' : 'pointer', letterSpacing: 0.3,
+          }}>{T.bgRemove}</button>
+        )}
+      </div>
+      {error && <div style={{ fontSize: 11, color: c.danger, marginTop: 8 }}>{error}</div>}
     </div>
   );
 }
