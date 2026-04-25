@@ -67,6 +67,7 @@ function AlbumScreen({ c, state, onBack, onSessionExpired }) {
       const failed = files[uploaded] ? files[uploaded].name : '';
       const prefix = failed ? `${failed}: ` : '';
       if (err.code === 'mov_hevc_unsupported') setError(prefix + T.albumMovHevc);
+      else if (err.code === 'mov_too_large') setError(prefix + T.albumTooLarge);
       else if (err.code === 'mov_codec_unknown' || err.code === 'mov_remux_failed') setError(prefix + T.albumMovFailed);
       else if (err.status === 415) setError(prefix + T.albumUnsupported);
       else if (err.status === 413 && code === 'quota_exceeded') setError(prefix + T.albumQuotaExceeded);
