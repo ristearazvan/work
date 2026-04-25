@@ -15,6 +15,7 @@ function AlbumScreen({ c, state, onBack, onSessionExpired }) {
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState(null);   // 0..1 while uploading
   const [batch, setBatch] = React.useState(null);         // { done, total } while uploading multiple
+  const [stage, setStage] = React.useState('upload');     // 'upload' | 'convert'
   const [error, setError] = React.useState('');
   const fileRef = React.useRef(null);
 
@@ -50,7 +51,14 @@ function AlbumScreen({ c, state, onBack, onSessionExpired }) {
       for (let i = 0; i < files.length; i++) {
         setBatch({ done: i, total: files.length });
         setProgress(0);
-        await SYNC.uploadMedia(settings, files[i], (p) => setProgress(p));
+        let file = files[i];
+        if (window.AG_MOV && window.AG_MOV.isMovFile(file)) {
+          setStage('convert');
+          file = await window.AG_MOV.remuxMovToMp4(file);
+        }
+        setStage('upload');
+        setProgress(0);
+        await SYNC.uploadMedia(settings, file, (p) => setProgress(p));
         uploaded++;
       }
     } catch (err) {
@@ -58,7 +66,9 @@ function AlbumScreen({ c, state, onBack, onSessionExpired }) {
       const code = err.body && err.body.error;
       const failed = files[uploaded] ? files[uploaded].name : '';
       const prefix = failed ? `${failed}: ` : '';
-      if (err.status === 415) setError(prefix + T.albumUnsupported);
+      if (err.code === 'mov_hevc_unsupported') setError(prefix + T.albumMovHevc);
+      else if (err.code === 'mov_codec_unknown' || err.code === 'mov_remux_failed') setError(prefix + T.albumMovFailed);
+      else if (err.status === 415) setError(prefix + T.albumUnsupported);
       else if (err.status === 413 && code === 'quota_exceeded') setError(prefix + T.albumQuotaExceeded);
       else if (err.status === 413) setError(prefix + T.albumTooLarge);
       else setError(prefix + (err.message || T.albumError));
@@ -66,6 +76,7 @@ function AlbumScreen({ c, state, onBack, onSessionExpired }) {
       setBusy(false);
       setProgress(null);
       setBatch(null);
+      setStage('upload');
       if (uploaded > 0) await refresh();
     }
   };
@@ -141,10 +152,12 @@ function AlbumScreen({ c, state, onBack, onSessionExpired }) {
           )}
           {progress != null && (
             <div style={{ fontSize: 11, color: c.muted, marginTop: 10, fontFamily: FONTS.mono }}>
-              {T.albumUploading} {batch && batch.total > 1 ? `${batch.done + 1}/${batch.total} — ` : ''}{Math.round(progress * 100)}%
+              {stage === 'convert' ? T.albumConverting : T.albumUploading}
+              {' '}{batch && batch.total > 1 ? `${batch.done + 1}/${batch.total}` : ''}
+              {stage === 'upload' ? `${batch && batch.total > 1 ? ' — ' : ''}${Math.round(progress * 100)}%` : ''}
             </div>
           )}
-          <input ref={fileRef} type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+          <input ref={fileRef} type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,.mov"
                  style={{ display: 'none' }} onChange={onFileChosen} />
           <button onClick={pickFile} disabled={busy || isFull} style={{
             marginTop: 14, width: '100%', padding: '12px', border: 'none',

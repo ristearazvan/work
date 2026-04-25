@@ -1,11 +1,12 @@
 // Agenda — offline shell service worker
-const CACHE = 'agenda-v28';
+const CACHE = 'agenda-v29';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './js/data.js',
   './js/sync.js',
+  './js/mov-remux.js',
   './js/primitives.jsx',
   './js/screens-main.jsx',
   './js/screens-secondary.jsx',
