@@ -133,7 +133,7 @@ const AG_T = {
   albumAdd: 'Adaugă',
   albumUploading: 'Se încarcă…',
   albumConverting: 'Se convertește .mov…',
-  albumMovHevc: 'Acest .mov folosește codec HEVC. Pe iPhone: Setări → Cameră → Formate → „Cele mai compatibile", apoi reînregistrează, sau exportă ca MP4.',
+  albumMovHevc: 'Acest .mov folosește codec HEVC și trebuie convertit în MP4 înainte. Pe iPhone: deschide clipul în iMovie → Partajează → „Salvează video" (exportă automat ca MP4). Pentru clipurile viitoare, schimbă Reglaje → Cameră → Formate → „Compatibilitate maximă".',
   albumMovFailed: 'Conversia .mov a eșuat. Exportă ca MP4 și încearcă din nou.',
   albumUsage: '{used} din {total} folosiți',
   albumFull: 'Album plin — șterge ceva înainte de a adăuga.',
