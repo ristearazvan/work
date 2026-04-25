@@ -16,6 +16,7 @@ function App() {
   const [editing, setEditing] = React.useState(null);
   const [syncStatus, setSyncStatus] = React.useState({ state: 'idle' });
   const [refreshingInbox, setRefreshingInbox] = React.useState(false);
+  const [configReady, setConfigReady] = React.useState(() => !window.AG_STORE.loadSession());
 
   const theme = state?.settings.theme === 'dark' ? 'dark' : 'light';
   const c = AG[theme];
@@ -48,6 +49,7 @@ function App() {
   // state, so the config-push effect skips the resulting change instead of
   // pushing the just-pulled data straight back.
   const suppressNextConfigPush = React.useRef(false);
+  const lastLocalConfigEditAt = React.useRef(0);
 
   // Merge server config over a local settings bundle. Server is authoritative
   // for every synced field — anything deleted locally stays deleted.
@@ -92,6 +94,7 @@ function App() {
     suppressNextConfigPush.current = true;
     didBootPullConfig.current = true;
     setState(merged);
+    setConfigReady(true);
     setTab('home');
   }, [SYNC, applyServerConfig]);
 
@@ -100,6 +103,7 @@ function App() {
     if (cur) await SYNC.logout(cur.settings);
     window.AG_STORE.clearSession();
     setState(null);
+    setConfigReady(true);
     setTab('home');
   }, [SYNC]);
 
@@ -108,6 +112,7 @@ function App() {
     if (e instanceof SYNC.SessionExpiredError) {
       window.AG_STORE.clearSession();
       setState(null);
+      setConfigReady(true);
       setTab('home');
       return true;
     }
@@ -122,6 +127,24 @@ function App() {
       setState(s => s ? ({ ...s, settings: { ...s.settings, lastSyncError: err || '' } }) : s);
     }
   }, []);
+
+  const pullConfigFromServer = React.useCallback(async ({ skipRecentLocalEdits = true } = {}) => {
+    const cur = stateRef.current;
+    if (!cur || !SYNC.configured(cur.settings)) return false;
+    if (skipRecentLocalEdits && Date.now() - lastLocalConfigEditAt.current < 5000) return false;
+    try {
+      const cfg = await SYNC.fetchConfig(cur.settings);
+      if (!cfg || !cfg.exists) return false;
+      if (skipRecentLocalEdits && Date.now() - lastLocalConfigEditAt.current < 5000) return false;
+      suppressNextConfigPush.current = true;
+      setState(s => s ? ({ ...s, settings: applyServerConfig(s.settings, cfg) }) : s);
+      markSynced(true);
+      return true;
+    } catch (e) {
+      if (!handleSyncError(e)) markSynced(false, e.message || String(e));
+      return false;
+    }
+  }, [SYNC, applyServerConfig, markSynced, handleSyncError]);
 
   const pushAll = React.useCallback(async () => {
     const cur = stateRef.current;
@@ -190,13 +213,29 @@ function App() {
     didBootPullConfig.current = true;
     (async () => {
       try {
-        const cur = stateRef.current;
-        const cfg = await SYNC.fetchConfig(cur.settings);
-        if (!cfg || !cfg.exists) return;
-        setState(s => s ? ({ ...s, settings: applyServerConfig(s.settings, cfg) }) : s);
-      } catch (e) { handleSyncError(e); }
+        await pullConfigFromServer({ skipRecentLocalEdits: false });
+      } finally {
+        setConfigReady(true);
+      }
     })();
-  }, [hasSession, SYNC, applyServerConfig, handleSyncError]);
+  }, [hasSession, pullConfigFromServer]);
+
+  // Keep account-level settings fresh across phones/devices. Re-pull when the
+  // app comes back into view and while it stays visible.
+  React.useEffect(() => {
+    if (!hasSession || !configReady) return;
+    const pullIfVisible = () => {
+      if (document.visibilityState === 'visible') pullConfigFromServer();
+    };
+    document.addEventListener('visibilitychange', pullIfVisible);
+    window.addEventListener('focus', pullIfVisible);
+    const h = setInterval(pullIfVisible, 60000);
+    return () => {
+      document.removeEventListener('visibilitychange', pullIfVisible);
+      window.removeEventListener('focus', pullIfVisible);
+      clearInterval(h);
+    };
+  }, [hasSession, configReady, pullConfigFromServer]);
 
   // Fetch inbox on mount + whenever user opens it
   const refreshInbox = React.useCallback(async () => {
@@ -286,6 +325,7 @@ function App() {
   };
 
   const updateSettings = (next) => {
+    lastLocalConfigEditAt.current = Date.now();
     setState(s => ({ ...s, settings: { ...s.settings, ...next } }));
   };
 
@@ -363,6 +403,14 @@ function App() {
     return (
       <div style={{ height: '100%', background: c.bg, color: c.ink, overflow: 'auto' }}>
         <LoginScreen c={c} workerUrl={state?.settings.workerUrl || ''} onLoggedIn={handleLoggedIn} />
+      </div>
+    );
+  }
+
+  if (!configReady) {
+    return (
+      <div style={{ height: '100%', background: c.bg, color: c.ink, display: 'grid', placeItems: 'center', fontFamily: FONTS.ui }}>
+        <div style={{ fontSize: 12, color: c.muted, letterSpacing: 1, textTransform: 'uppercase' }}>{T.syncSection}</div>
       </div>
     );
   }
