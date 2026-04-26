@@ -42,11 +42,15 @@
      every surface-coloured block become translucent with a light blur. */
   body.has-bg #app { background: transparent !important; box-shadow: none !important; }
   body.has-bg .card,
-  body.has-bg .album-cta,
+  body.has-bg .album-cta {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
   body.has-bg .ro-chip,
   body.has-bg .slot,
   body.has-bg .chip {
-    background: rgba(255, 255, 255, 0.11);
+    background: rgba(255, 255, 255, 0.45);
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
   }
@@ -54,10 +58,9 @@
   body.has-bg .chip.active,
   body.has-bg .day.active { background: var(--ink); backdrop-filter: none; -webkit-backdrop-filter: none; }
   body.has-bg .notes-card { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-  body.has-bg .summary { background: rgba(234, 238, 225, 0.18); }
-  body.has-bg .err { background: rgba(248, 234, 230, 0.3); }
-  /* With low card opacity we also lighten the scrim so more of the image comes through. */
-  body.has-bg::after { background: rgba(245, 243, 238, 0.12) !important; }
+  body.has-bg .summary { background: rgba(234, 238, 225, 0.55); }
+  body.has-bg .err { background: rgba(248, 234, 230, 0.7); }
+  body.has-bg::after { background: rgba(245, 243, 238, 0.2) !important; }
   /* Boost text contrast when the background image is showing through the cards. */
   body.has-bg { color: #000; }
   body.has-bg h1,
