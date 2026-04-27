@@ -175,11 +175,19 @@
   <h1 id="heading">Alege un slot</h1>
   <p class="sub" id="subheading">Completează cererea. Vei primi un link de status după trimitere.</p>
 
-  <a id="album-cta" class="album-cta album-hidden" href="#">
-    <div class="thumb empty" id="album-thumb">♡</div>
+  <a id="album-cta-photos" class="album-cta album-hidden" href="#">
+    <div class="thumb empty" id="album-thumb-photos">♡</div>
     <div class="meta">
-      <div class="title">Vezi album</div>
-      <div class="count" id="album-count"></div>
+      <div class="title">Album foto</div>
+      <div class="count" id="album-count-photos"></div>
+    </div>
+    <div class="arrow">→</div>
+  </a>
+  <a id="album-cta-videos" class="album-cta album-hidden" href="#">
+    <div class="thumb empty" id="album-thumb-videos">▶</div>
+    <div class="meta">
+      <div class="title">Album video</div>
+      <div class="count" id="album-count-videos"></div>
     </div>
     <div class="arrow">→</div>
   </a>
@@ -202,8 +210,10 @@
     app.innerHTML = '<div class="card"><div class="empty"><h2>Link invalid</h2></div></div>';
     return;
   }
-  const albumCta = document.getElementById('album-cta');
-  if (albumCta) albumCta.href = '/book/' + encodeURIComponent(slug) + '/album';
+  const albumCtaPhotos = document.getElementById('album-cta-photos');
+  const albumCtaVideos = document.getElementById('album-cta-videos');
+  if (albumCtaPhotos) albumCtaPhotos.href = '/book/' + encodeURIComponent(slug) + '/album';
+  if (albumCtaVideos) albumCtaVideos.href = '/book/' + encodeURIComponent(slug) + '/album/videos';
 
   function applyBackground(d) {
     if (!d || !d.has_background) {
@@ -218,21 +228,30 @@
   }
 
   function renderAlbumCta(d) {
-    if (!albumCta) return;
-    const count = Number(d.media_count) || 0;
-    if (!d.public_enabled || count <= 0) {
-      albumCta.classList.add('album-hidden');
-      return;
-    }
-    albumCta.classList.remove('album-hidden');
-    const thumb = document.getElementById('album-thumb');
-    const countEl = document.getElementById('album-count');
-    if (countEl) countEl.textContent = count === 1 ? '1 fișier media' : `${count} fișiere media`;
-    if (thumb && d.album_thumb_id) {
-      thumb.classList.remove('empty');
-      thumb.textContent = '';
-      thumb.style.backgroundImage = `url(/api/${encodeURIComponent(slug)}/media/${encodeURIComponent(d.album_thumb_id)})`;
-    }
+    const renderOne = (cta, thumbId, countId, count, thumbMediaId, singular, plural) => {
+      if (!cta) return;
+      if (!d.public_enabled || count <= 0) {
+        cta.classList.add('album-hidden');
+        return;
+      }
+      cta.classList.remove('album-hidden');
+      const thumb = document.getElementById(thumbId);
+      const countEl = document.getElementById(countId);
+      if (countEl) countEl.textContent = count === 1 ? singular : plural.replace('{n}', count);
+      if (thumb && thumbMediaId) {
+        thumb.classList.remove('empty');
+        thumb.textContent = '';
+        thumb.style.backgroundImage = `url(/api/${encodeURIComponent(slug)}/media/${encodeURIComponent(thumbMediaId)})`;
+      }
+    };
+    renderOne(albumCtaPhotos, 'album-thumb-photos', 'album-count-photos',
+              Number(d.photo_count) || 0, d.photo_thumb_id,
+              '1 fotografie', '{n} fotografii');
+    // Video thumbs are not rendered (CSS background-image can't display a
+    // video stream); the ▶ placeholder is used instead.
+    renderOne(albumCtaVideos, 'album-thumb-videos', 'album-count-videos',
+              Number(d.video_count) || 0, null,
+              '1 clip', '{n} clipuri');
   }
 
   function svcMode(d, svcName) {

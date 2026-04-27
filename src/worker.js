@@ -255,16 +255,39 @@ function parseServicePricesJson(s) {
 }
 
 async function mediaSummary(env, accountId) {
-  const row = await env.DB.prepare(
-    `SELECT COUNT(*) AS n FROM media WHERE account_id = ?`
-  ).bind(accountId).first();
-  const count = row?.n || 0;
-  if (!count) return { count: 0, thumb_id: null };
-  const thumb = await env.DB.prepare(
+  // Per-kind counts and a representative thumbnail (first by display_order)
+  // for each kind, used to render separate photo / video album CTAs on the
+  // public booking page.
+  const rows = await env.DB.prepare(
+    `SELECT kind, COUNT(*) AS n FROM media WHERE account_id = ? GROUP BY kind`
+  ).bind(accountId).all();
+  let photoCount = 0, videoCount = 0;
+  for (const r of rows.results || []) {
+    if (r.kind === 'image') photoCount = r.n || 0;
+    else if (r.kind === 'video') videoCount = r.n || 0;
+  }
+  const total = photoCount + videoCount;
+  const empty = { count: 0, thumb_id: null };
+  if (!total) return { count: 0, thumb_id: null, photo: empty, video: empty };
+  const thumbFor = async (kind) => {
+    const row = await env.DB.prepare(
+      `SELECT id FROM media WHERE account_id = ? AND kind = ?
+        ORDER BY display_order ASC, uploaded_at DESC LIMIT 1`
+    ).bind(accountId, kind).first();
+    return row?.id || null;
+  };
+  const overall = await env.DB.prepare(
     `SELECT id FROM media WHERE account_id = ?
       ORDER BY display_order ASC, uploaded_at DESC LIMIT 1`
   ).bind(accountId).first();
-  return { count, thumb_id: thumb?.id || null };
+  const photoThumb = photoCount ? await thumbFor('image') : null;
+  const videoThumb = videoCount ? await thumbFor('video') : null;
+  return {
+    count: total,
+    thumb_id: overall?.id || null,
+    photo: { count: photoCount, thumb_id: photoThumb },
+    video: { count: videoCount, thumb_id: videoThumb },
+  };
 }
 
 async function resolveSlug(env, slug) {
@@ -281,6 +304,8 @@ async function computeAvailability(env, accountId) {
     enabled: false, public_enabled: false, bookings_enabled: false,
     page_title: '', page_notes: '', weekly_hours: {}, days: [], services: [], service_prices: {},
     media_count: 0, album_thumb_id: null,
+    photo_count: 0, photo_thumb_id: null,
+    video_count: 0, video_thumb_id: null,
     has_background: false, background_updated_at: 0,
     buffer_min: 15, advance_min: 30, max_days: 7,
   };
@@ -303,6 +328,8 @@ async function computeAvailability(env, accountId) {
       enabled: false, public_enabled: false, bookings_enabled: bookingsEnabled,
       page_title: pageTitle, page_notes: pageNotes, weekly_hours: {}, days: [], services, service_prices: servicePrices,
       media_count: 0, album_thumb_id: null,
+    photo_count: 0, photo_thumb_id: null,
+    video_count: 0, video_thumb_id: null,
       has_background: hasBackground, background_updated_at: backgroundUpdatedAt,
       buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays,
     };
@@ -315,6 +342,8 @@ async function computeAvailability(env, accountId) {
       enabled: false, public_enabled: true, bookings_enabled: false,
       page_title: pageTitle, page_notes: pageNotes, weekly_hours: hours, days: [], services, service_prices: servicePrices,
       media_count: media.count, album_thumb_id: media.thumb_id,
+      photo_count: media.photo.count, photo_thumb_id: media.photo.thumb_id,
+      video_count: media.video.count, video_thumb_id: media.video.thumb_id,
       has_background: hasBackground, background_updated_at: backgroundUpdatedAt,
       buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays,
     };
@@ -392,6 +421,10 @@ async function computeAvailability(env, accountId) {
     service_prices: servicePrices,
     media_count: media.count,
     album_thumb_id: media.thumb_id,
+    photo_count: media.photo.count,
+    photo_thumb_id: media.photo.thumb_id,
+    video_count: media.video.count,
+    video_thumb_id: media.video.thumb_id,
     has_background: hasBackground,
     background_updated_at: backgroundUpdatedAt,
     buffer_min: bufferMin,
@@ -978,7 +1011,7 @@ export default {
       if (bookStatus) {
         return env.ASSETS.fetch(new Request(new URL('/book-status.html', url), request));
       }
-      const bookAlbum = pathname.match(/^\/book\/([a-z0-9-]+)\/album\/?$/);
+      const bookAlbum = pathname.match(/^\/book\/([a-z0-9-]+)\/album(?:\/videos)?\/?$/);
       if (bookAlbum) {
         return env.ASSETS.fetch(new Request(new URL('/book-album.html', url), request));
       }

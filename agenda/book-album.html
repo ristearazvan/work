@@ -61,10 +61,26 @@
 
 <script>
 (function () {
+  // Path shapes:
+  //   /book/<slug>/album         → photo album (kind=image)
+  //   /book/<slug>/album/videos  → video album (kind=video)
   const parts = location.pathname.split('/').filter(Boolean);
   const slug = parts[1] || '';
+  const isVideoAlbum = parts[3] === 'videos';
+  const albumKind = isVideoAlbum ? 'video' : 'image';
+  const STRINGS = isVideoAlbum
+    ? { title: 'Album video', titleEmpty: 'Album video gol',
+        unitOne: 'clip', unitMany: 'clipuri',
+        emptyHint: 'Nicio înregistrare video încă.',
+        emptyTitle: 'Niciun clip', emptyBody: 'Revino mai târziu.' }
+    : { title: 'Album foto', titleEmpty: 'Album foto gol',
+        unitOne: 'fotografie', unitMany: 'fotografii',
+        emptyHint: 'Nicio fotografie încă.',
+        emptyTitle: 'Nicio fotografie', emptyBody: 'Revino mai târziu.' };
   const backLink = document.getElementById('back');
   backLink.href = '/book/' + encodeURIComponent(slug);
+  const eyebrow = document.querySelector('.eyebrow');
+  if (eyebrow) eyebrow.textContent = STRINGS.title;
 
   const content = document.getElementById('content');
   const title = document.getElementById('title');
@@ -127,14 +143,15 @@
       const r = await fetch('/api/' + encodeURIComponent(slug) + '/media', { cache: 'no-store' });
       if (r.status === 404) { title.textContent = 'Pagină inexistentă'; return; }
       const data = await r.json();
-      items = data.items || [];
-      title.textContent = items.length ? 'Album' : 'Album gol';
+      const all = data.items || [];
+      items = all.filter(it => it.kind === albumKind);
+      title.textContent = items.length ? STRINGS.title : STRINGS.titleEmpty;
       sub.textContent = items.length
-        ? `${items.length} ${items.length === 1 ? 'articol' : 'articole'}`
-        : 'Nicio imagine încă.';
+        ? `${items.length} ${items.length === 1 ? STRINGS.unitOne : STRINGS.unitMany}`
+        : STRINGS.emptyHint;
 
       if (!items.length) {
-        content.innerHTML = '<div class="empty"><h2>Nimic de afișat</h2><p>Revino mai târziu.</p></div>';
+        content.innerHTML = `<div class="empty"><h2>${STRINGS.emptyTitle}</h2><p>${STRINGS.emptyBody}</p></div>`;
         return;
       }
 
