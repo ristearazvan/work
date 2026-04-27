@@ -82,12 +82,19 @@ function AlbumScreen({ c, state, onBack, onSessionExpired }) {
     }
   };
 
-  const moveItem = async (idx, direction) => {
-    const target = idx + direction;
-    if (target < 0 || target >= items.length || busy) return;
+  // Move an item within its kind-section. `localIdx` is the index inside the
+  // filtered photos/videos array; the swap is performed on the global `items`
+  // list (which is what the reorder API expects), preserving relative order
+  // between the two sections.
+  const moveWithinKind = async (kind, localIdx, direction) => {
+    const targetLocal = localIdx + direction;
+    const section = items.filter(it => it.kind === kind);
+    if (targetLocal < 0 || targetLocal >= section.length || busy) return;
+    const aGlobal = items.indexOf(section[localIdx]);
+    const bGlobal = items.indexOf(section[targetLocal]);
+    if (aGlobal < 0 || bGlobal < 0) return;
     const next = items.slice();
-    const [row] = next.splice(idx, 1);
-    next.splice(target, 0, row);
+    [next[aGlobal], next[bGlobal]] = [next[bGlobal], next[aGlobal]];
     setItems(next);   // optimistic
     setBusy(true);
     try {
@@ -175,30 +182,74 @@ function AlbumScreen({ c, state, onBack, onSessionExpired }) {
           )}
         </div>
 
-        {/* Items */}
+        {/* Items — split into photos and videos sections */}
         {loading ? null : items.length === 0 ? (
           <div style={{ background: c.surface, border: `1px solid ${c.hairline}`, borderRadius: 3 }}>
             <Empty c={c} title={T.albumEmpty} hint={T.albumEmptyHint} />
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-            {items.map((it, idx) => (
-              <AlbumTile
-                key={it.id}
-                item={it}
-                c={c}
-                settings={settings}
-                disabled={busy}
-                canUp={idx > 0}
-                canDown={idx < items.length - 1}
-                onUp={() => moveItem(idx, -1)}
-                onDown={() => moveItem(idx, +1)}
-                onDelete={() => deleteItem(it.id)}
-              />
-            ))}
-          </div>
+          <React.Fragment>
+            <AlbumSection
+              c={c}
+              title={T.albumPhotos}
+              kind="image"
+              section={items.filter(it => it.kind === 'image')}
+              emptyTitle={T.albumPhotosEmpty}
+              busy={busy}
+              settings={settings}
+              onMove={moveWithinKind}
+              onDelete={deleteItem}
+            />
+            <div style={{ height: 14 }} />
+            <AlbumSection
+              c={c}
+              title={T.albumVideos}
+              kind="video"
+              section={items.filter(it => it.kind === 'video')}
+              emptyTitle={T.albumVideosEmpty}
+              busy={busy}
+              settings={settings}
+              onMove={moveWithinKind}
+              onDelete={deleteItem}
+            />
+          </React.Fragment>
         )}
       </div>
+    </div>
+  );
+}
+
+function AlbumSection({ c, title, kind, section, emptyTitle, busy, settings, onMove, onDelete }) {
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <div style={{
+        fontSize: 11, color: c.muted, letterSpacing: 1.2, textTransform: 'uppercase',
+        fontWeight: 600, padding: '6px 4px 10px',
+      }}>
+        {title} <span style={{ color: c.ink2, fontWeight: 500 }}>· {section.length}</span>
+      </div>
+      {section.length === 0 ? (
+        <div style={{ background: c.surface, border: `1px solid ${c.hairline}`, borderRadius: 3, padding: '18px 16px', fontSize: 12, color: c.muted, textAlign: 'center' }}>
+          {emptyTitle}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+          {section.map((it, idx) => (
+            <AlbumTile
+              key={it.id}
+              item={it}
+              c={c}
+              settings={settings}
+              disabled={busy}
+              canUp={idx > 0}
+              canDown={idx < section.length - 1}
+              onUp={() => onMove(kind, idx, -1)}
+              onDown={() => onMove(kind, idx, +1)}
+              onDelete={() => onDelete(it.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
