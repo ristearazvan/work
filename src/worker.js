@@ -701,9 +701,9 @@ async function handlePostMedia(request, env) {
   });
 
   const orderRow = await env.DB.prepare(
-    'SELECT COALESCE(MAX(display_order), -1) AS m FROM media WHERE account_id = ?'
+    'SELECT COALESCE(MIN(display_order), 0) AS m FROM media WHERE account_id = ?'
   ).bind(auth.account_id).first();
-  const order = (Number(orderRow?.m) ?? -1) + 1;
+  const order = (Number(orderRow?.m) ?? 0) - 1;
   const now = Math.floor(Date.now() / 1000);
 
   await env.DB.prepare(
