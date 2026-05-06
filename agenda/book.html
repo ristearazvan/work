@@ -191,11 +191,10 @@
     </div>
     <div class="arrow">→</div>
   </a>
-  <a id="external-link-cta" class="album-cta album-hidden" href="#" target="_blank" rel="noopener noreferrer nofollow">
-    <div class="thumb empty">↗</div>
+  <a id="extra-page-cta" class="album-cta album-hidden" href="#">
+    <div class="thumb empty">✦</div>
     <div class="meta">
-      <div class="title" id="external-link-title">Deschide</div>
-      <div class="count" id="external-link-host"></div>
+      <div class="title" id="extra-page-title">Mai multe</div>
     </div>
     <div class="arrow">→</div>
   </a>
@@ -220,36 +219,22 @@
   }
   const albumCtaPhotos = document.getElementById('album-cta-photos');
   const albumCtaVideos = document.getElementById('album-cta-videos');
-  const externalLinkCta = document.getElementById('external-link-cta');
+  const extraPageCta = document.getElementById('extra-page-cta');
   if (albumCtaPhotos) albumCtaPhotos.href = '/book/' + encodeURIComponent(slug) + '/album';
   if (albumCtaVideos) albumCtaVideos.href = '/book/' + encodeURIComponent(slug) + '/album/videos';
+  if (extraPageCta) extraPageCta.href = '/book/' + encodeURIComponent(slug) + '/page';
 
-  function renderExternalLink(d) {
-    if (!externalLinkCta) return;
-    const url = (d && d.external_link_url) || '';
-    const enabled = !!(d && d.external_link_enabled) && !!d.public_enabled && !!url;
-    // Defence-in-depth: even though the worker validates the URL, double-check
-    // here so a stray href can't slip past if the API is ever misused.
-    let safeUrl = '';
-    try {
-      const u = new URL(url);
-      if (u.protocol === 'http:' || u.protocol === 'https:') safeUrl = u.toString();
-    } catch {}
-    if (!enabled || !safeUrl) {
-      externalLinkCta.classList.add('album-hidden');
-      externalLinkCta.removeAttribute('href');
+  function renderExtraPage(d) {
+    if (!extraPageCta) return;
+    const enabled = !!(d && d.extra_page_enabled) && !!d.public_enabled;
+    if (!enabled) {
+      extraPageCta.classList.add('album-hidden');
       return;
     }
-    externalLinkCta.classList.remove('album-hidden');
-    externalLinkCta.href = safeUrl;
-    const title = document.getElementById('external-link-title');
-    const host = document.getElementById('external-link-host');
-    const label = (d.external_link_label || '').trim();
-    if (title) title.textContent = label || 'Deschide';
-    if (host) {
-      try { host.textContent = new URL(safeUrl).host; }
-      catch { host.textContent = ''; }
-    }
+    extraPageCta.classList.remove('album-hidden');
+    const titleEl = document.getElementById('extra-page-title');
+    const label = (d.extra_page_title || '').trim();
+    if (titleEl) titleEl.textContent = label || 'Mai multe';
   }
 
   function applyBackground(d) {
@@ -357,7 +342,7 @@
       state.availability = data;
       applyBackground(data);
       renderAlbumCta(data);
-      renderExternalLink(data);
+      renderExtraPage(data);
       const bookable = bookableServices(data);
       if (data.enabled && bookable.length) {
         state.service = bookable[0];

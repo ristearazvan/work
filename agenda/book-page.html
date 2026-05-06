@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Pagină</title>
+<meta name="theme-color" content="#F5F3EE" />
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F3EE; --surface: #FFFFFF; --surface2: #FAF8F3;
+    --ink: #1C1C1A; --ink2: #3A3A36; --muted: #8A867C;
+    --hair: #E5E1D8; --hair2: #EFEBE2;
+    --accent: #556B3D; --accentSoft: #EAEEE1;
+    --ui: 'Inter', -apple-system, system-ui, sans-serif;
+    --serif: 'Fraunces', Georgia, serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); }
+  #app { max-width: 520px; margin: 0 auto; padding: 20px 20px 60px; min-height: 100vh; position: relative; z-index: 1; }
+  @media (min-width: 521px) { body { background: #E5E1D8; } #app { background: var(--bg); box-shadow: 0 0 0 1px rgba(0,0,0,0.06); } }
+  /* Mirrors book.html: optional custom background image, with scrim + blur. */
+  body.has-bg::before {
+    content: ''; position: fixed; inset: 0; z-index: 0;
+    background: var(--custom-bg) center/cover no-repeat;
+  }
+  body.has-bg::after {
+    content: ''; position: fixed; inset: 0; z-index: 0;
+    background: rgba(245, 243, 238, 0.55);
+  }
+  @media (min-width: 521px) {
+    body.has-bg::after { background: rgba(229, 225, 216, 0.35); }
+  }
+  body.has-bg #app { background: transparent !important; box-shadow: none !important; }
+  body.has-bg .card {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  body.has-bg::after { background: rgba(245, 243, 238, 0.2) !important; }
+  body.has-bg { color: #000; }
+  body.has-bg .card,
+  body.has-bg .card *,
+  body.has-bg h1 {
+    color: #000;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.65), 0 0 1px rgba(255,255,255,0.85);
+  }
+  body.has-bg .sub,
+  body.has-bg .eyebrow,
+  body.has-bg .muted { color: #333 !important; }
+  h1 { font-family: var(--serif); font-size: 30px; font-weight: 400; letter-spacing: -0.5; margin: 4px 0 6px; line-height: 1.1; }
+  .eyebrow { font-size: 11px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; font-weight: 500; }
+  .sub { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 500; margin-bottom: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--hair); border-radius: 3px; padding: 28px 20px; margin-top: 20px; text-align: center; }
+  .card .placeholder-mark { font-family: var(--serif); font-size: 36px; color: var(--accent); letter-spacing: 0.4px; margin-bottom: 4px; }
+  .card h2 { font-family: var(--serif); font-size: 20px; color: var(--ink2); font-weight: 400; margin: 8px 0 4px; }
+  .card p { font-size: 13px; color: var(--muted); line-height: 1.55; margin: 6px 0 0; }
+</style>
+</head>
+<body>
+<div id="app">
+  <a class="back" href="#" id="back">← Înapoi la program</a>
+  <div class="eyebrow" id="eyebrow">Pagină</div>
+  <h1 id="title">Se încarcă…</h1>
+  <p class="sub" id="sub"></p>
+  <div id="content"></div>
+</div>
+
+<script>
+(function () {
+  const parts = location.pathname.split('/').filter(Boolean);
+  const slug = parts[1] || '';
+  const backLink = document.getElementById('back');
+  const titleEl = document.getElementById('title');
+  const subEl = document.getElementById('sub');
+  const eyebrowEl = document.getElementById('eyebrow');
+  const content = document.getElementById('content');
+
+  if (!slug) { titleEl.textContent = 'Link invalid'; return; }
+  backLink.href = '/book/' + encodeURIComponent(slug);
+
+  function applyBackground(d) {
+    if (!d || !d.has_background) return;
+    const v = Number(d.background_updated_at) || 0;
+    const url = '/api/' + encodeURIComponent(slug) + '/background' + (v ? '?v=' + v : '');
+    document.body.style.setProperty('--custom-bg', `url("${url}")`);
+    document.body.classList.add('has-bg');
+  }
+
+  function renderDisabled() {
+    eyebrowEl.textContent = 'Indisponibil';
+    titleEl.textContent = 'Pagină indisponibilă';
+    subEl.textContent = '';
+    content.innerHTML = '<div class="card"><h2>Această pagină nu este activă</h2><p>Contactează direct providerul pentru detalii.</p></div>';
+  }
+
+  async function load() {
+    try {
+      const r = await fetch('/api/' + encodeURIComponent(slug) + '/availability', { cache: 'no-store' });
+      if (r.status === 404) { titleEl.textContent = 'Pagină inexistentă'; subEl.textContent = ''; return; }
+      const data = await r.json();
+      applyBackground(data);
+      if (!data.public_enabled || !data.extra_page_enabled) {
+        renderDisabled();
+        return;
+      }
+      const label = (data.extra_page_title || '').trim() || 'Mai multe';
+      eyebrowEl.textContent = 'Mai multe';
+      titleEl.textContent = label;
+      subEl.textContent = '';
+      document.title = label;
+      // Phase 1 placeholder; phase 2 will replace this with editable content.
+      content.innerHTML = '<div class="card">'
+        + '<div class="placeholder-mark">✦</div>'
+        + '<h2>În curând</h2>'
+        + '<p>Aici vor apărea detalii suplimentare. Revino curând.</p>'
+        + '</div>';
+    } catch {
+      titleEl.textContent = 'Eroare de conexiune';
+      subEl.textContent = '';
+    }
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

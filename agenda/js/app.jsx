@@ -71,9 +71,8 @@ function App() {
     // the same GET — track it in settings so the UI can show preview/remove.
     next.hasBackground = !!cfg.has_background;
     next.backgroundUpdatedAt = Number(cfg.background_updated_at) || 0;
-    next.externalLinkEnabled = !!cfg.external_link_enabled;
-    next.externalLinkLabel = cfg.external_link_label || '';
-    next.externalLinkUrl = cfg.external_link_url || '';
+    next.extraPageEnabled = !!cfg.extra_page_enabled;
+    next.extraPageTitle = cfg.extra_page_title || '';
     return next;
   }, []);
 
@@ -200,7 +199,7 @@ function App() {
     h: state.settings.hours, b: state.settings.bufferMin, a: state.settings.advanceMin,
     d: state.settings.maxDays, e: state.settings.publicEnabled, bk: state.settings.bookingsEnabled, s: state.settings.services,
     pt: state.settings.pageTitle, pn: state.settings.pageNotes, sp: state.settings.servicePrices,
-    le: state.settings.externalLinkEnabled, ll: state.settings.externalLinkLabel, lu: state.settings.externalLinkUrl,
+    xe: state.settings.extraPageEnabled, xt: state.settings.extraPageTitle,
   }) : '';
   const firstCfgRun = React.useRef(true);
   React.useEffect(() => {
