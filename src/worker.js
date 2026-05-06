@@ -44,7 +44,6 @@ const ALLOWED_MEDIA = {
 };
 const EXTRA_PAGE_ITEMS_MAX  = 50;
 const EXTRA_PAGE_NOTE_MAX   = 500;
-const EXTRA_PAGE_PRICE_MAX  = 1000000;
 const EXTRA_PAGE_IMAGE_MAX  = 10 * 1024 * 1024;
 
 async function totalUsedBytes(env, accountId) {
@@ -954,7 +953,7 @@ async function handleGetExtraPage(request, env) {
   const auth = await requireSession(request, env);
   if (!auth.account_id) return auth.response;
   const { results } = await env.DB.prepare(
-    `SELECT id, mime_type, size_bytes, price, note, display_order, uploaded_at
+    `SELECT id, mime_type, size_bytes, note, display_order, uploaded_at
        FROM extra_page_items WHERE account_id = ?
       ORDER BY display_order ASC, uploaded_at DESC`
   ).bind(auth.account_id).all();
@@ -1008,13 +1007,13 @@ async function handlePostExtraPage(request, env) {
 
   await env.DB.prepare(
     `INSERT INTO extra_page_items
-       (id, account_id, r2_key, mime_type, size_bytes, price, note, display_order, uploaded_at)
-     VALUES (?, ?, ?, ?, ?, 0, '', ?, ?)`
+       (id, account_id, r2_key, mime_type, size_bytes, note, display_order, uploaded_at)
+     VALUES (?, ?, ?, ?, ?, '', ?, ?)`
   ).bind(id, auth.account_id, r2Key, mimeType, size, order, now).run();
 
   return json({
     id, mime_type: mimeType, size_bytes: size,
-    price: 0, note: '', display_order: order, uploaded_at: now,
+    note: '', display_order: order, uploaded_at: now,
   });
 }
 
@@ -1024,17 +1023,14 @@ async function handlePutExtraPageItem(request, env, id) {
   let body;
   try { body = await request.json(); } catch { return bad('invalid_json'); }
 
-  const priceN = Number(body.price);
-  if (!Number.isFinite(priceN) || priceN < 0 || priceN > EXTRA_PAGE_PRICE_MAX) return bad('invalid_price');
-  const price = Math.round(priceN);
   const note = (body.note || '').toString().slice(0, EXTRA_PAGE_NOTE_MAX);
 
   const res = await env.DB.prepare(
-    'UPDATE extra_page_items SET price = ?, note = ? WHERE id = ? AND account_id = ?'
-  ).bind(price, note, id, auth.account_id).run();
+    'UPDATE extra_page_items SET note = ? WHERE id = ? AND account_id = ?'
+  ).bind(note, id, auth.account_id).run();
   const changes = res.meta?.changes ?? res.changes ?? 0;
   if (!changes) return bad('not_found', 404);
-  return json({ ok: true, id, price, note });
+  return json({ ok: true, id, note });
 }
 
 async function handleDeleteExtraPageItem(request, env, id) {
@@ -1096,7 +1092,7 @@ async function handlePublicListExtraPage(request, env, slug) {
   if (!publicOn || !extraOn) return json({ enabled: false, items: [], title: '' });
 
   const { results } = await env.DB.prepare(
-    `SELECT id, mime_type, price, note, display_order, uploaded_at
+    `SELECT id, mime_type, note, display_order, uploaded_at
        FROM extra_page_items WHERE account_id = ?
       ORDER BY display_order ASC, uploaded_at DESC`
   ).bind(accountId).all();

@@ -170,7 +170,6 @@ const AG_T = {
   extraPageAdd: 'Adaugă imagine',
   extraPageEmpty: 'Niciun articol',
   extraPageEmptyHint: 'Încarcă o imagine pentru a începe.',
-  extraPagePrice: 'Preț (RON)',
   extraPageNote: 'Detalii',
   extraPageNotePh: 'Descriere scurtă, măsuri, condiții…',
   extraPageDelete: 'Șterge',

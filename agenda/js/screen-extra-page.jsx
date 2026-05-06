@@ -1,7 +1,7 @@
 // Agenda — Extra page editor: per-account catalogue rendered on
-// /book/<slug>/page. Each item carries an image (R2-backed), a price, and
-// a free-text note. Mirrors AlbumScreen for upload/reorder/delete; price
-// and note edits are debounced and pushed per-item.
+// /book/<slug>/page. Each item carries an image (R2-backed) and a free-text
+// note. Mirrors AlbumScreen for upload/reorder/delete; note edits are
+// debounced and pushed per-item.
 
 function ExtraPageScreen({ c, state, onBack, onSessionExpired }) {
   const T = window.AG_T;
@@ -72,7 +72,6 @@ function ExtraPageScreen({ c, state, onBack, onSessionExpired }) {
       flagSaving(id);
       try {
         await SYNC.updateExtraPageItem(settings, id, {
-          price: Number(cur.price) || 0,
           note: (cur.note || '').toString(),
         });
         flagSaved(id);
@@ -254,21 +253,12 @@ function ExtraPageRow({ c, item, settings, busy, saveStatus, canUp, canDown, onC
         <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       </div>
       <div style={{ padding: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, color: c.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>{T.extraPagePrice}</div>
-            <input
-              type="number" inputMode="numeric" min="0" step="10"
-              value={item.price ? item.price : ''} placeholder="0"
-              onChange={e => onChange('price', Math.max(0, Number(e.target.value) || 0))}
-              style={{ ...inp(c, FONTS.ui, 14), padding: '10px 12px' }}
-            />
-          </div>
-          <div style={{ minWidth: 64, textAlign: 'right', fontSize: 11, color: c.muted, paddingTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ fontSize: 10, color: c.muted, letterSpacing: 0.8, textTransform: 'uppercase' }}>{T.extraPageNote}</div>
+          <div style={{ fontSize: 11, color: c.muted }}>
             {saveStatus === 'saving' ? T.extraPageSaving : saveStatus === 'saved' ? `✓ ${T.extraPageSaved}` : ''}
           </div>
         </div>
-        <div style={{ fontSize: 10, color: c.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>{T.extraPageNote}</div>
         <textarea
           value={item.note || ''} maxLength={500}
           placeholder={T.extraPageNotePh} rows={3}

@@ -330,12 +330,12 @@
     });
   }
 
-  async function updateExtraPageItem(settings, id, { price, note }) {
+  async function updateExtraPageItem(settings, id, { note }) {
     if (!configured(settings)) return { skipped: true };
     return doFetch(settings, '/api/extra-page/' + encodeURIComponent(id), {
       method: 'PUT',
       headers: authHeaders(settings),
-      body: JSON.stringify({ price, note }),
+      body: JSON.stringify({ note }),
     });
   }
 
