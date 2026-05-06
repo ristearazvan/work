@@ -54,6 +54,9 @@
       page_title: (settings.pageTitle || '').toString(),
       page_notes: (settings.pageNotes || '').toString(),
       service_prices: settings.servicePrices || {},
+      external_link_enabled: !!settings.externalLinkEnabled,
+      external_link_label: (settings.externalLinkLabel || '').toString(),
+      external_link_url: (settings.externalLinkUrl || '').toString(),
     };
   }
 

@@ -113,6 +113,11 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
           }}>{T.albumManage}</button>
         </Section>
 
+        {/* External link */}
+        <Section c={c} title={T.linkSection}>
+          <ExternalLinkEditor c={c} s={s} setS={setS} T={T} />
+        </Section>
+
         {/* Booking section */}
         <Section c={c} title={T.bookingSection}>
           <div style={{
@@ -605,6 +610,49 @@ function BackgroundEditor({ c, s, setS, T }) {
         )}
       </div>
       {error && <div style={{ fontSize: 11, color: c.danger, marginTop: 8 }}>{error}</div>}
+    </div>
+  );
+}
+
+function ExternalLinkEditor({ c, s, setS, T }) {
+  const enabled = !!s.externalLinkEnabled;
+  const label = s.externalLinkLabel || '';
+  const url = s.externalLinkUrl || '';
+  // Empty is fine here — only flag it as invalid when there's actually
+  // something typed that doesn't parse as an http(s) URL.
+  const urlInvalid = url.trim().length > 0 && !/^https?:\/\/\S+/i.test(url.trim());
+
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: c.muted, marginBottom: 12, lineHeight: 1.5 }}>{T.linkHint}</div>
+
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '12px 0', borderBottom: `1px solid ${c.hairline2}`,
+      }}>
+        <div>
+          <div style={{ fontSize: 13, color: c.ink, fontWeight: 500 }}>{T.linkEnabled}</div>
+          <div style={{ fontSize: 11, color: c.muted, marginTop: 3 }}>{T.linkEnabledHint}</div>
+        </div>
+        <Toggle c={c} on={enabled} onClick={() => setS({ externalLinkEnabled: !enabled })} />
+      </div>
+
+      <FieldBlock label={T.linkLabel}>
+        <input type="text" maxLength={40} value={label} placeholder={T.linkLabelPlaceholder}
+          onChange={e => setS({ externalLinkLabel: e.target.value.slice(0, 40) })}
+          style={inp(c, FONTS.ui, 14)} />
+        <div style={{ fontSize: 11, color: c.muted, marginTop: 6 }}>{T.linkLabelHint}</div>
+      </FieldBlock>
+
+      <FieldBlock label={T.linkUrl}>
+        <input type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+          maxLength={500} value={url} placeholder={T.linkUrlPlaceholder}
+          onChange={e => setS({ externalLinkUrl: e.target.value.slice(0, 500) })}
+          style={{ ...inp(c, FONTS.ui, 14), borderColor: urlInvalid ? c.danger : c.hairline }} />
+        <div style={{ fontSize: 11, color: urlInvalid ? c.danger : c.muted, marginTop: 6 }}>
+          {urlInvalid ? T.linkInvalidUrl : T.linkUrlHint}
+        </div>
+      </FieldBlock>
     </div>
   );
 }

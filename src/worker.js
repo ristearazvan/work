@@ -29,6 +29,20 @@ async function ipHash(request) {
 
 const SLUG_RE = /^[a-z0-9-]{2,40}$/;
 const SESSION_TTL_S = 30 * 86400;
+const EXTERNAL_LINK_URL_MAX = 500;
+const EXTERNAL_LINK_LABEL_MAX = 40;
+
+// Accepts only absolute http/https URLs (rejects javascript:, data:, etc.)
+// to keep the public-page CTA from being weaponised. Returns the trimmed
+// canonical form, or null if invalid.
+function sanitizeExternalLinkUrl(raw) {
+  const s = String(raw || '').trim();
+  if (!s || s.length > EXTERNAL_LINK_URL_MAX) return null;
+  let u;
+  try { u = new URL(s); } catch { return null; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+  return u.toString().slice(0, EXTERNAL_LINK_URL_MAX);
+}
 
 // ─────────────────────────────────────────────
 // Media constants
@@ -307,6 +321,7 @@ async function computeAvailability(env, accountId) {
     photo_count: 0, photo_thumb_id: null,
     video_count: 0, video_thumb_id: null,
     has_background: false, background_updated_at: 0,
+    external_link_enabled: false, external_link_url: '', external_link_label: '',
     buffer_min: 15, advance_min: 30, max_days: 7,
   };
 
@@ -322,6 +337,12 @@ async function computeAvailability(env, accountId) {
   const bookingsEnabled = cfg.bookings_enabled == null ? true : !!cfg.bookings_enabled;
   const hasBackground = !!cfg.background_r2_key;
   const backgroundUpdatedAt = Number(cfg.background_updated_at) || 0;
+  const externalLinkUrlRaw = sanitizeExternalLinkUrl(cfg.external_link_url);
+  const externalLinkLabel = (cfg.external_link_label || '').toString().trim().slice(0, EXTERNAL_LINK_LABEL_MAX);
+  // Only surface the link publicly when the toggle is on AND the URL parses;
+  // a half-configured link (toggle on, URL empty) silently hides the CTA.
+  const externalLinkEnabled = !!cfg.external_link_enabled && !!externalLinkUrlRaw;
+  const externalLinkUrl = externalLinkEnabled ? externalLinkUrlRaw : '';
 
   if (!publicEnabled) {
     return {
@@ -331,6 +352,7 @@ async function computeAvailability(env, accountId) {
     photo_count: 0, photo_thumb_id: null,
     video_count: 0, video_thumb_id: null,
       has_background: hasBackground, background_updated_at: backgroundUpdatedAt,
+      external_link_enabled: false, external_link_url: '', external_link_label: '',
       buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays,
     };
   }
@@ -345,6 +367,7 @@ async function computeAvailability(env, accountId) {
       photo_count: media.photo.count, photo_thumb_id: media.photo.thumb_id,
       video_count: media.video.count, video_thumb_id: media.video.thumb_id,
       has_background: hasBackground, background_updated_at: backgroundUpdatedAt,
+      external_link_enabled: externalLinkEnabled, external_link_url: externalLinkUrl, external_link_label: externalLinkLabel,
       buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays,
     };
   }
@@ -427,6 +450,9 @@ async function computeAvailability(env, accountId) {
     video_thumb_id: media.video.thumb_id,
     has_background: hasBackground,
     background_updated_at: backgroundUpdatedAt,
+    external_link_enabled: externalLinkEnabled,
+    external_link_url: externalLinkUrl,
+    external_link_label: externalLinkLabel,
     buffer_min: bufferMin,
     advance_min: advanceMin,
     max_days: maxDays,
@@ -529,6 +555,9 @@ async function handleGetConfig(request, env) {
     service_prices: parseServicePricesJson(cfg.service_prices_json),
     has_background: !!cfg.background_r2_key,
     background_updated_at: Number(cfg.background_updated_at) || 0,
+    external_link_enabled: !!cfg.external_link_enabled,
+    external_link_url: cfg.external_link_url || '',
+    external_link_label: cfg.external_link_label || '',
   });
 }
 
@@ -560,11 +589,24 @@ async function handlePutConfig(request, env) {
   const pageNotes = (body.page_notes || '').toString().slice(0, 2000) || null;
   const servicePrices = normalizeServicePrices(body.service_prices);
 
+  // External link: URL must be http(s); reject otherwise so the provider sees
+  // the error rather than having their input silently dropped.
+  const linkUrlRaw = (body.external_link_url || '').toString().trim();
+  let linkUrl = null;
+  if (linkUrlRaw) {
+    linkUrl = sanitizeExternalLinkUrl(linkUrlRaw);
+    if (!linkUrl) return bad('invalid_external_link_url');
+  }
+  const linkLabel = (body.external_link_label || '').toString().trim().slice(0, EXTERNAL_LINK_LABEL_MAX) || null;
+  const linkEnabled = body.external_link_enabled ? 1 : 0;
+
   await env.DB.prepare(
     `INSERT INTO config (account_id, hours_json, buffer_min, advance_min, max_days,
                          public_enabled, bookings_enabled, services_json,
-                         page_title, page_notes, service_prices_json, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         page_title, page_notes, service_prices_json,
+                         external_link_url, external_link_label, external_link_enabled,
+                         updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(account_id) DO UPDATE SET
        hours_json = excluded.hours_json,
        buffer_min = excluded.buffer_min,
@@ -576,11 +618,15 @@ async function handlePutConfig(request, env) {
        page_title = excluded.page_title,
        page_notes = excluded.page_notes,
        service_prices_json = excluded.service_prices_json,
+       external_link_url = excluded.external_link_url,
+       external_link_label = excluded.external_link_label,
+       external_link_enabled = excluded.external_link_enabled,
        updated_at = excluded.updated_at`
   ).bind(
     auth.account_id,
     JSON.stringify(normalized), bufferMin, advanceMin, maxDays, enabled, bookingsOn,
     JSON.stringify(services), pageTitle, pageNotes, JSON.stringify(servicePrices),
+    linkUrl, linkLabel, linkEnabled,
     Math.floor(Date.now() / 1000)
   ).run();
 
