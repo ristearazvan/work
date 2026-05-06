@@ -34,7 +34,7 @@ const EXTRA_PAGE_TITLE_MAX = 40;
 // ─────────────────────────────────────────────
 // Media constants
 // ─────────────────────────────────────────────
-const MEDIA_LIMIT_BYTES = 500 * 1024 * 1024;  // 500 MB per account
+const MEDIA_LIMIT_BYTES = 500 * 1024 * 1024;  // 500 MB per account (album + extra page combined)
 const ALLOWED_MEDIA = {
   'image/jpeg': { kind: 'image', max: 10 * 1024 * 1024, ext: 'jpg' },
   'image/png':  { kind: 'image', max: 10 * 1024 * 1024, ext: 'png' },
@@ -42,6 +42,20 @@ const ALLOWED_MEDIA = {
   'video/mp4':  { kind: 'video', max: 50 * 1024 * 1024, ext: 'mp4' },
   'video/webm': { kind: 'video', max: 50 * 1024 * 1024, ext: 'webm' },
 };
+const EXTRA_PAGE_ITEMS_MAX  = 50;
+const EXTRA_PAGE_NOTE_MAX   = 500;
+const EXTRA_PAGE_PRICE_MAX  = 1000000;
+const EXTRA_PAGE_IMAGE_MAX  = 10 * 1024 * 1024;
+
+async function totalUsedBytes(env, accountId) {
+  const a = await env.DB.prepare(
+    'SELECT COALESCE(SUM(size_bytes), 0) AS used FROM media WHERE account_id = ?'
+  ).bind(accountId).first();
+  const b = await env.DB.prepare(
+    'SELECT COALESCE(SUM(size_bytes), 0) AS used FROM extra_page_items WHERE account_id = ?'
+  ).bind(accountId).first();
+  return Number(a?.used || 0) + Number(b?.used || 0);
+}
 
 function b64ToBytes(s) {
   const bin = atob(s);
@@ -686,7 +700,9 @@ async function handleGetMyMedia(request, env) {
       ORDER BY display_order ASC, uploaded_at DESC`
   ).bind(auth.account_id).all();
   const items = results || [];
-  const usedBytes = items.reduce((s, r) => s + r.size_bytes, 0);
+  // Quota is shared with the extra-page catalogue, so report the combined
+  // usage here too — the album UI surfaces it as the global "used / total".
+  const usedBytes = await totalUsedBytes(env, auth.account_id);
   return json({ items, used_bytes: usedBytes, limit_bytes: MEDIA_LIMIT_BYTES });
 }
 
@@ -702,10 +718,7 @@ async function handlePostMedia(request, env) {
   if (!Number.isFinite(size) || size <= 0) return bad('invalid_size');
   if (size > spec.max) return bad('file_too_large', 413);
 
-  const usedRow = await env.DB.prepare(
-    'SELECT COALESCE(SUM(size_bytes), 0) AS used FROM media WHERE account_id = ?'
-  ).bind(auth.account_id).first();
-  const used = Number(usedRow?.used) || 0;
+  const used = await totalUsedBytes(env, auth.account_id);
   if (used + size > MEDIA_LIMIT_BYTES) {
     return json({ error: 'quota_exceeded', used_bytes: used, limit_bytes: MEDIA_LIMIT_BYTES }, { status: 413 });
   }
@@ -935,6 +948,185 @@ async function handlePublicGetMedia(request, env, slug, id) {
 }
 
 // ─────────────────────────────────────────────
+// Extra page items (per-account catalogue rendered on /book/<slug>/page)
+// ─────────────────────────────────────────────
+async function handleGetExtraPage(request, env) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+  const { results } = await env.DB.prepare(
+    `SELECT id, mime_type, size_bytes, price, note, display_order, uploaded_at
+       FROM extra_page_items WHERE account_id = ?
+      ORDER BY display_order ASC, uploaded_at DESC`
+  ).bind(auth.account_id).all();
+  const used = await totalUsedBytes(env, auth.account_id);
+  return json({
+    items: results || [],
+    used_bytes: used,
+    limit_bytes: MEDIA_LIMIT_BYTES,
+    item_limit: EXTRA_PAGE_ITEMS_MAX,
+  });
+}
+
+async function handlePostExtraPage(request, env) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+
+  const mimeType = (request.headers.get('content-type') || '').split(';')[0].trim();
+  const spec = ALLOWED_MEDIA[mimeType];
+  // Phase-2 catalogue is image-only — videos belong in the album.
+  if (!spec || spec.kind !== 'image') return bad('invalid_mime', 415);
+
+  const size = Number(request.headers.get('content-length'));
+  if (!Number.isFinite(size) || size <= 0) return bad('invalid_size');
+  if (size > EXTRA_PAGE_IMAGE_MAX) return bad('file_too_large', 413);
+
+  const countRow = await env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM extra_page_items WHERE account_id = ?'
+  ).bind(auth.account_id).first();
+  if ((Number(countRow?.n) || 0) >= EXTRA_PAGE_ITEMS_MAX) {
+    return json({ error: 'item_limit_exceeded', limit: EXTRA_PAGE_ITEMS_MAX }, { status: 413 });
+  }
+
+  const used = await totalUsedBytes(env, auth.account_id);
+  if (used + size > MEDIA_LIMIT_BYTES) {
+    return json({ error: 'quota_exceeded', used_bytes: used, limit_bytes: MEDIA_LIMIT_BYTES }, { status: 413 });
+  }
+
+  const id = uid();
+  const r2Key = `${auth.account_id}/extra/${id}.${spec.ext}`;
+  await env.MEDIA.put(r2Key, request.body, {
+    httpMetadata: { contentType: mimeType },
+  });
+
+  // Append to the bottom of the list — providers tweak the order afterwards
+  // via the up/down buttons, mirroring the album behaviour.
+  const orderRow = await env.DB.prepare(
+    'SELECT COALESCE(MAX(display_order), -1) AS m FROM extra_page_items WHERE account_id = ?'
+  ).bind(auth.account_id).first();
+  const order = (Number(orderRow?.m) ?? -1) + 1;
+  const now = Math.floor(Date.now() / 1000);
+
+  await env.DB.prepare(
+    `INSERT INTO extra_page_items
+       (id, account_id, r2_key, mime_type, size_bytes, price, note, display_order, uploaded_at)
+     VALUES (?, ?, ?, ?, ?, 0, '', ?, ?)`
+  ).bind(id, auth.account_id, r2Key, mimeType, size, order, now).run();
+
+  return json({
+    id, mime_type: mimeType, size_bytes: size,
+    price: 0, note: '', display_order: order, uploaded_at: now,
+  });
+}
+
+async function handlePutExtraPageItem(request, env, id) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+  let body;
+  try { body = await request.json(); } catch { return bad('invalid_json'); }
+
+  const priceN = Number(body.price);
+  if (!Number.isFinite(priceN) || priceN < 0 || priceN > EXTRA_PAGE_PRICE_MAX) return bad('invalid_price');
+  const price = Math.round(priceN);
+  const note = (body.note || '').toString().slice(0, EXTRA_PAGE_NOTE_MAX);
+
+  const res = await env.DB.prepare(
+    'UPDATE extra_page_items SET price = ?, note = ? WHERE id = ? AND account_id = ?'
+  ).bind(price, note, id, auth.account_id).run();
+  const changes = res.meta?.changes ?? res.changes ?? 0;
+  if (!changes) return bad('not_found', 404);
+  return json({ ok: true, id, price, note });
+}
+
+async function handleDeleteExtraPageItem(request, env, id) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+  const row = await env.DB.prepare(
+    'SELECT r2_key FROM extra_page_items WHERE id = ? AND account_id = ?'
+  ).bind(id, auth.account_id).first();
+  if (!row) return bad('not_found', 404);
+  await env.MEDIA.delete(row.r2_key).catch(() => {});
+  await env.DB.prepare(
+    'DELETE FROM extra_page_items WHERE id = ? AND account_id = ?'
+  ).bind(id, auth.account_id).run();
+  return json({ ok: true });
+}
+
+async function handlePutExtraPageOrder(request, env) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+  let body;
+  try { body = await request.json(); } catch { return bad('invalid_json'); }
+  if (!Array.isArray(body.order)) return bad('invalid_order');
+  const ids = body.order.filter(x => typeof x === 'string' && /^[a-f0-9]{32}$/.test(x)).slice(0, EXTRA_PAGE_ITEMS_MAX);
+  if (!ids.length) return json({ ok: true });
+
+  const placeholders = ids.map(() => '?').join(',');
+  const { results } = await env.DB.prepare(
+    `SELECT id FROM extra_page_items WHERE account_id = ? AND id IN (${placeholders})`
+  ).bind(auth.account_id, ...ids).all();
+  const owned = new Set((results || []).map(r => r.id));
+
+  const stmts = [];
+  let order = 0;
+  for (const id of ids) {
+    if (!owned.has(id)) continue;
+    stmts.push(env.DB.prepare(
+      'UPDATE extra_page_items SET display_order = ? WHERE id = ? AND account_id = ?'
+    ).bind(order++, id, auth.account_id));
+  }
+  if (stmts.length) await env.DB.batch(stmts);
+  return json({ ok: true });
+}
+
+async function handlePublicListExtraPage(request, env, slug) {
+  const ih = await ipHash(request);
+  const rl = await rateLimit(env, ih, 'read');
+  if (!rl.ok) return json({ error: 'rate_limited', retry_after: rl.retry_after }, { status: 429 });
+
+  const accountId = await resolveSlug(env, slug);
+  if (!accountId) return bad('not_found', 404);
+
+  // Hide the catalogue if the public page is off OR the toggle is off — keep
+  // direct ID guesses from leaking content the provider has retracted.
+  const cfg = await env.DB.prepare(
+    'SELECT public_enabled, extra_page_enabled, extra_page_title FROM config WHERE account_id = ?'
+  ).bind(accountId).first();
+  const publicOn = !!(cfg && cfg.public_enabled);
+  const extraOn = !!(cfg && cfg.extra_page_enabled);
+  if (!publicOn || !extraOn) return json({ enabled: false, items: [], title: '' });
+
+  const { results } = await env.DB.prepare(
+    `SELECT id, mime_type, price, note, display_order, uploaded_at
+       FROM extra_page_items WHERE account_id = ?
+      ORDER BY display_order ASC, uploaded_at DESC`
+  ).bind(accountId).all();
+  return json({
+    enabled: true,
+    title: (cfg.extra_page_title || '').toString().trim(),
+    items: results || [],
+  });
+}
+
+async function handlePublicGetExtraPageImage(request, env, slug, id) {
+  const accountId = await resolveSlug(env, slug);
+  if (!accountId) return bad('not_found', 404);
+  const row = await env.DB.prepare(
+    'SELECT r2_key, mime_type, size_bytes FROM extra_page_items WHERE id = ? AND account_id = ?'
+  ).bind(id, accountId).first();
+  if (!row) return bad('not_found', 404);
+  const obj = await env.MEDIA.get(row.r2_key);
+  if (!obj) return bad('not_found', 404);
+  return new Response(obj.body, {
+    status: 200,
+    headers: {
+      'content-type': row.mime_type || 'application/octet-stream',
+      'content-length': String(row.size_bytes || 0),
+      'cache-control': 'public, max-age=31536000, immutable',
+    },
+  });
+}
+
+// ─────────────────────────────────────────────
 // Router
 // ─────────────────────────────────────────────
 export default {
@@ -974,6 +1166,14 @@ export default {
       const pubMediaList = pathname.match(/^\/api\/([a-z0-9-]+)\/media$/);
       if (pubMediaList && request.method === 'GET') {
         return await handlePublicListMedia(request, env, pubMediaList[1]);
+      }
+      const pubExtraImage = pathname.match(/^\/api\/([a-z0-9-]+)\/extra-page\/([a-f0-9]{32})$/);
+      if (pubExtraImage && request.method === 'GET') {
+        return await handlePublicGetExtraPageImage(request, env, pubExtraImage[1], pubExtraImage[2]);
+      }
+      const pubExtraList = pathname.match(/^\/api\/([a-z0-9-]+)\/extra-page$/);
+      if (pubExtraList && request.method === 'GET') {
+        return await handlePublicListExtraPage(request, env, pubExtraList[1]);
       }
       // Status lookup by unique token — no slug needed.
       const statusMatch = pathname.match(/^\/api\/requests\/([A-Za-z0-9]+)$/);
@@ -1015,6 +1215,22 @@ export default {
       const mediaDelete = pathname.match(/^\/api\/media\/([a-f0-9]{32})$/);
       if (mediaDelete && request.method === 'DELETE') {
         return await handleDeleteMedia(request, env, mediaDelete[1]);
+      }
+      if (pathname === '/api/extra-page' && request.method === 'GET') {
+        return await handleGetExtraPage(request, env);
+      }
+      if (pathname === '/api/extra-page' && request.method === 'POST') {
+        return await handlePostExtraPage(request, env);
+      }
+      if (pathname === '/api/extra-page/order' && request.method === 'PUT') {
+        return await handlePutExtraPageOrder(request, env);
+      }
+      const extraItemPut = pathname.match(/^\/api\/extra-page\/([a-f0-9]{32})$/);
+      if (extraItemPut && request.method === 'PUT') {
+        return await handlePutExtraPageItem(request, env, extraItemPut[1]);
+      }
+      if (extraItemPut && request.method === 'DELETE') {
+        return await handleDeleteExtraPageItem(request, env, extraItemPut[1]);
       }
       const decisionMatch = pathname.match(/^\/api\/requests\/([A-Za-z0-9]+)\/decision$/);
       if (decisionMatch && request.method === 'POST') {

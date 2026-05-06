@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────────────
 // SETTINGS
 // ──────────────────────────────────────────────────────────────
-function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncStatus, onLogout, onOpenAlbum }) {
+function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncStatus, onLogout, onOpenAlbum, onOpenExtraPage }) {
   const T = window.AG_T;
   window.__AG_C = c;
   const s = state.settings;
@@ -134,9 +134,9 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
           }}>{T.albumManage}</button>
         </Section>
 
-        {/* Extra page (phase 1: link + title only) */}
+        {/* Extra page */}
         <Section c={c} title={T.extraPageSection}>
-          <ExtraPageEditor c={c} s={s} setS={setS} T={T} />
+          <ExtraPageEditor c={c} s={s} setS={setS} T={T} onOpenExtraPage={onOpenExtraPage} />
         </Section>
 
         {/* Booking section */}
@@ -635,7 +635,7 @@ function BackgroundEditor({ c, s, setS, T }) {
   );
 }
 
-function ExtraPageEditor({ c, s, setS, T }) {
+function ExtraPageEditor({ c, s, setS, T, onOpenExtraPage }) {
   const enabled = !!s.extraPageEnabled;
   const title = s.extraPageTitle || '';
 
@@ -660,6 +660,12 @@ function ExtraPageEditor({ c, s, setS, T }) {
           style={inp(c, FONTS.ui, 14)} />
         <div style={{ fontSize: 11, color: c.muted, marginTop: 6 }}>{T.extraPageTitleHint}</div>
       </FieldBlock>
+
+      <button onClick={onOpenExtraPage} style={{
+        width: '100%', padding: '12px', border: `1px solid ${c.hairline}`, background: c.surface,
+        borderRadius: 3, fontFamily: FONTS.ui, fontSize: 13, color: c.ink, cursor: 'pointer',
+        letterSpacing: 0.3, fontWeight: 500,
+      }}>{T.extraPageManage}</button>
     </div>
   );
 }

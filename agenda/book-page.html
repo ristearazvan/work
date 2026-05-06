@@ -59,6 +59,15 @@
   .card .placeholder-mark { font-family: var(--serif); font-size: 36px; color: var(--accent); letter-spacing: 0.4px; margin-bottom: 4px; }
   .card h2 { font-family: var(--serif); font-size: 20px; color: var(--ink2); font-weight: 400; margin: 8px 0 4px; }
   .card p { font-size: 13px; color: var(--muted); line-height: 1.55; margin: 6px 0 0; }
+  .item { background: var(--surface); border: 1px solid var(--hair); border-radius: 3px; overflow: hidden; margin-top: 12px; }
+  .item img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--surface2); }
+  .item .body { padding: 14px 16px 16px; }
+  .item .price { font-family: var(--serif); font-size: 22px; color: var(--ink); letter-spacing: -0.2px; font-variant-numeric: tabular-nums; }
+  .item .price .ron { font-family: var(--ui); font-size: 12px; color: var(--muted); margin-left: 4px; letter-spacing: 0.6px; text-transform: uppercase; }
+  .item .note { font-size: 14px; color: var(--ink2); line-height: 1.55; white-space: pre-line; word-wrap: break-word; overflow-wrap: anywhere; margin-top: 8px; }
+  body.has-bg .item { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  body.has-bg .item .price,
+  body.has-bg .item .note { color: #000; text-shadow: 0 1px 2px rgba(255,255,255,0.65), 0 0 1px rgba(255,255,255,0.85); }
 </style>
 </head>
 <body>
@@ -98,11 +107,42 @@
     content.innerHTML = '<div class="card"><h2>Această pagină nu este activă</h2><p>Contactează direct providerul pentru detalii.</p></div>';
   }
 
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+  }
+
+  function renderItems(items) {
+    if (!items.length) {
+      content.innerHTML = '<div class="card">'
+        + '<div class="placeholder-mark">✦</div>'
+        + '<h2>Pagină goală</h2>'
+        + '<p>Mai trece pe aici — articolele apar după ce sunt adăugate.</p>'
+        + '</div>';
+      return;
+    }
+    const html = items.map(it => {
+      const imgUrl = '/api/' + encodeURIComponent(slug) + '/extra-page/' + encodeURIComponent(it.id);
+      const price = Number(it.price) || 0;
+      const note = (it.note || '').trim();
+      return '<div class="item">'
+        + `<img src="${imgUrl}" alt="" loading="lazy" />`
+        + '<div class="body">'
+        + (price > 0 ? `<div class="price">${price.toLocaleString('ro-RO')}<span class="ron">RON</span></div>` : '')
+        + (note ? `<div class="note">${escapeHtml(note)}</div>` : '')
+        + '</div>'
+        + '</div>';
+    }).join('');
+    content.innerHTML = html;
+  }
+
   async function load() {
     try {
-      const r = await fetch('/api/' + encodeURIComponent(slug) + '/availability', { cache: 'no-store' });
-      if (r.status === 404) { titleEl.textContent = 'Pagină inexistentă'; subEl.textContent = ''; return; }
-      const data = await r.json();
+      const [availRes, itemsRes] = await Promise.all([
+        fetch('/api/' + encodeURIComponent(slug) + '/availability', { cache: 'no-store' }),
+        fetch('/api/' + encodeURIComponent(slug) + '/extra-page', { cache: 'no-store' }),
+      ]);
+      if (availRes.status === 404) { titleEl.textContent = 'Pagină inexistentă'; subEl.textContent = ''; return; }
+      const data = await availRes.json();
       applyBackground(data);
       if (!data.public_enabled || !data.extra_page_enabled) {
         renderDisabled();
@@ -113,12 +153,12 @@
       titleEl.textContent = label;
       subEl.textContent = '';
       document.title = label;
-      // Phase 1 placeholder; phase 2 will replace this with editable content.
-      content.innerHTML = '<div class="card">'
-        + '<div class="placeholder-mark">✦</div>'
-        + '<h2>În curând</h2>'
-        + '<p>Aici vor apărea detalii suplimentare. Revino curând.</p>'
-        + '</div>';
+      let items = [];
+      if (itemsRes.ok) {
+        const payload = await itemsRes.json().catch(() => ({}));
+        if (payload && payload.enabled) items = payload.items || [];
+      }
+      renderItems(items);
     } catch {
       titleEl.textContent = 'Eroare de conexiune';
       subEl.textContent = '';

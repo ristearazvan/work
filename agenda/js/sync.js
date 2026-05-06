@@ -290,11 +290,83 @@
     return baseUrl(settings) + '/api/' + encodeURIComponent(settings.slug) + '/media/' + encodeURIComponent(id);
   }
 
+  // ── Extra page items ──────────────────────────────────────────
+  async function fetchExtraPage(settings) {
+    if (!configured(settings)) return { items: [], used_bytes: 0, limit_bytes: 0, item_limit: 0 };
+    return doFetch(settings, '/api/extra-page', {
+      method: 'GET',
+      headers: authHeaders(settings),
+    });
+  }
+
+  function uploadExtraPageImage(settings, file, onProgress) {
+    return new Promise((resolve, reject) => {
+      if (!configured(settings)) {
+        reject(new Error('not_configured'));
+        return;
+      }
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', baseUrl(settings) + '/api/extra-page', true);
+      xhr.setRequestHeader('authorization', 'Bearer ' + settings.session);
+      xhr.setRequestHeader('content-type', file.type || 'application/octet-stream');
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
+      };
+      xhr.onload = () => {
+        let body = null;
+        try { body = JSON.parse(xhr.responseText); } catch {}
+        if (xhr.status === 401) { reject(new SessionExpiredError()); return; }
+        if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+        else {
+          const err = new Error((body && body.error) || `http_${xhr.status}`);
+          err.status = xhr.status;
+          err.body = body;
+          reject(err);
+        }
+      };
+      xhr.onerror = () => reject(new Error('network_error'));
+      xhr.onabort = () => reject(new Error('aborted'));
+      xhr.send(file);
+    });
+  }
+
+  async function updateExtraPageItem(settings, id, { price, note }) {
+    if (!configured(settings)) return { skipped: true };
+    return doFetch(settings, '/api/extra-page/' + encodeURIComponent(id), {
+      method: 'PUT',
+      headers: authHeaders(settings),
+      body: JSON.stringify({ price, note }),
+    });
+  }
+
+  async function deleteExtraPageItem(settings, id) {
+    if (!configured(settings)) return { skipped: true };
+    return doFetch(settings, '/api/extra-page/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: authHeaders(settings),
+    });
+  }
+
+  async function reorderExtraPage(settings, ids) {
+    if (!configured(settings)) return { skipped: true };
+    return doFetch(settings, '/api/extra-page/order', {
+      method: 'PUT',
+      headers: authHeaders(settings),
+      body: JSON.stringify({ order: ids }),
+    });
+  }
+
+  function extraPageImageUrl(settings, id) {
+    return baseUrl(settings) + '/api/' + encodeURIComponent(settings.slug) + '/extra-page/' + encodeURIComponent(id);
+  }
+
   window.AG_SYNC = {
     login, logout,
     pushBusy, pushConfig, fetchConfig, fetchInbox, decide, resetRemote,
     fetchMedia, uploadMedia, deleteMedia, reorderMedia, mediaUrl,
     uploadBackground, deleteBackground, backgroundUrl,
+    fetchExtraPage, uploadExtraPageImage, updateExtraPageItem,
+    deleteExtraPageItem, reorderExtraPage, extraPageImageUrl,
     configured, debounce, busyPayload, configPayload,
     SessionExpiredError,
   };
