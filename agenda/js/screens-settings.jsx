@@ -8,6 +8,23 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
   window.__AG_C = c;
   const s = state.settings;
 
+  // "Just synced" pulse: only fires on a manual busy → ok transition (debounced
+  // background pushes never enter the busy state). Auto-clears after ~1.6s so
+  // the button returns to its idle copy.
+  const [justSynced, setJustSynced] = React.useState(false);
+  const prevSyncState = React.useRef(syncStatus?.state);
+  React.useEffect(() => {
+    const prev = prevSyncState.current;
+    prevSyncState.current = syncStatus?.state;
+    if (prev === 'busy' && syncStatus?.state === 'ok') {
+      setJustSynced(true);
+      const t = setTimeout(() => setJustSynced(false), 1600);
+      return () => clearTimeout(t);
+    }
+    if (syncStatus?.state === 'error') setJustSynced(false);
+  }, [syncStatus?.state]);
+  const isSyncing = syncStatus?.state === 'busy';
+
   const setS = (patch) => onUpdateSettings({ ...s, ...patch });
   const hasToken = !!(s.session && s.session.trim());
   const bookingUrl = s.slug ? `${location.origin}/book/${s.slug}` : '';
@@ -67,9 +84,7 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
 
         {/* Account section */}
         <Section c={c} title={T.syncSection}>
-          <FieldBlock label={T.accountLabel}>
-            <div style={{ fontFamily: FONTS.mono, fontSize: 14, color: c.ink }}>{s.username || '—'}</div>
-          </FieldBlock>
+          <div style={{ fontFamily: FONTS.mono, fontSize: 14, color: c.ink, marginBottom: 14 }}>{s.username || '—'}</div>
           <FieldBlock label={T.bookingUrl}>
             <div onClick={copyBookingUrl} style={{
               fontFamily: FONTS.mono, fontSize: 12, color: c.accent, wordBreak: 'break-all',
@@ -79,14 +94,20 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
             <div style={{ fontSize: 11, color: c.muted, marginTop: 6 }}>{T.bookingUrlHint}</div>
           </FieldBlock>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={onSyncNow} disabled={!hasToken} style={{
+            <button onClick={onSyncNow} disabled={!hasToken || isSyncing} style={{
               flex: 1, padding: '12px', border: 'none',
-              background: hasToken ? c.accent : c.hairline,
+              background: !hasToken ? c.hairline : c.accent,
               borderRadius: 3, fontFamily: FONTS.ui, fontSize: 13, fontWeight: 600,
               color: hasToken ? '#fff' : c.muted,
-              cursor: hasToken ? 'pointer' : 'not-allowed',
+              cursor: !hasToken ? 'not-allowed' : isSyncing ? 'progress' : 'pointer',
               letterSpacing: 0.3,
-            }}>{T.syncNow}</button>
+              transition: 'background 220ms ease, opacity 220ms ease',
+              opacity: isSyncing ? 0.85 : 1,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}>
+              {isSyncing ? I.spinner(14, '#fff') : justSynced ? I.check(14, '#fff') : null}
+              <span>{isSyncing ? T.syncing : justSynced ? T.syncedJust : T.syncNow}</span>
+            </button>
             <button onClick={onLogout} style={{
               padding: '12px 16px', border: `1px solid ${c.hairline}`, background: c.surface,
               borderRadius: 3, fontFamily: FONTS.ui, fontSize: 12, color: c.ink2, cursor: 'pointer',

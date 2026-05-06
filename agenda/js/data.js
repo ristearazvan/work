@@ -220,6 +220,7 @@ const AG_T = {
   days: 'zile',
   copyToAll: 'Copiază la toate zilele',
   syncNow: 'Sincronizează acum',
+  syncing: 'Se sincronizează…',
   syncedJust: 'Sincronizat',
   syncError: 'Eroare la sincronizare',
   syncNever: 'Nesincronizat',

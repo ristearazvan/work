@@ -185,6 +185,23 @@ const I = {
       <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
     </svg>
   ),
+  // Indeterminate spinner — three-quarter arc rotated continuously via SMIL.
+  spinner: (s = 16, c = 'currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.4" strokeLinecap="round">
+      <g>
+        <path d="M21 12a9 9 0 11-9-9"/>
+        <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.85s" repeatCount="indefinite"/>
+      </g>
+    </svg>
+  ),
+  // Check that draws itself in once on mount (used as a one-shot "synced" cue).
+  check: (s = 16, c = 'currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12l5 5L20 7" pathLength="100" strokeDasharray="100" strokeDashoffset="100">
+        <animate attributeName="stroke-dashoffset" from="100" to="0" dur="0.32s" fill="freeze"/>
+      </path>
+    </svg>
+  ),
 };
 
 function Metric({ label, value, sub, c, accent = false }) {
