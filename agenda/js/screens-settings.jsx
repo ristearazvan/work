@@ -75,11 +75,6 @@ function SettingsScreen({ c, state, onBack, onUpdateSettings, onSyncNow, syncSta
         <div style={{ width: 34 }} />
       </div>
 
-      <div style={{ padding: '0 20px 20px' }}>
-        <div style={{ fontSize: 11, color: c.muted, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: 500 }}>{T.settings}</div>
-        <div style={{ fontFamily: FONTS.serif, fontSize: 28, marginTop: 2, letterSpacing: -0.4 }}>{T.settingsSub}</div>
-      </div>
-
       <div style={{ padding: '0 16px' }}>
 
         {/* Account section */}
