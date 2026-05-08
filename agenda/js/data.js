@@ -118,7 +118,7 @@ const AG_T = {
   resetRemoteFailed: 'Resetarea serverului a eșuat. Continui oricum cu ștergerea locală?',
   // Settings
   settings: 'Setări',
-  settingsSub: 'Configurare programări publice.',
+  settingsSub: 'Setări',
   syncSection: 'Cont',
   accountLabel: 'Cont',
   bookingUrl: 'Link public',
