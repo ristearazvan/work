@@ -11,7 +11,7 @@
   const WHATSAPP_NUMBER = '40730855510';
 
   // {phone} is replaced with PHONE_DISPLAY, linked to WhatsApp.
-  const TEXT = 'Pentru propriul tau profil scrie la {phone}, detalii si preturi pe whatsapp';
+  const TEXT = 'Pentru propriul tau profil scrie la {phone}. Detalii si preturi pe WhatsApp.';
   const CTA  = 'Scrie pe WhatsApp';
 
   // Message pre-filled in WhatsApp when the visitor taps through.
