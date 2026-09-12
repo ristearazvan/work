@@ -34,9 +34,15 @@
   .pf-btn:active { transform: scale(0.995); }
   .pf-btn svg { flex: 0 0 auto; width: 17px; height: 17px; fill: currentColor; }
   @media (max-width: 380px) { .pf-btn { width: 100%; } }
-  /* Background-image pages (book.html body.has-bg): keep the copy readable. */
+  /* Background-image pages (body.has-bg): white copy over the photo, with a
+     dark shadow so it still reads against light areas of the image. Pages
+     without a photo keep the dark text above — white would vanish on cream. */
   body.has-bg .pf-wrap { border-top-color: rgba(255,255,255,0.5); }
-  body.has-bg .pf-text { color: #333; }
+  body.has-bg .pf-text,
+  body.has-bg .pf-phone { color: #fff; font-weight: 500;
+    text-shadow: 0 0 3px rgba(0,0,0,0.95), 0 1px 2px rgba(0,0,0,0.9),
+                 0 0 10px rgba(0,0,0,0.6); }
+  body.has-bg .pf-phone { font-weight: 700; }
   body.has-bg .pf-btn { color: #fff; text-shadow: none; }
   `;
 
