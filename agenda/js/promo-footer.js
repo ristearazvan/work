@@ -1,4 +1,6 @@
-// Promo footer — shown at the bottom of every public /book/* page.
+// Promo footer — shown on every public /book/* page. The WhatsApp button sits
+// high on the page (right under the album cards); the promo sentence stays at
+// the bottom.
 // One shared block for all accounts: edit the config below and redeploy.
 (function () {
   // ---------------------------------------------------------------------------
@@ -12,7 +14,7 @@
 
   // {phone} is replaced with PHONE_DISPLAY, linked to WhatsApp.
   const TEXT = 'Pentru propriul tau profil scrie la {phone}. Detalii si preturi pe WhatsApp.';
-  const CTA  = 'Scrie pe WhatsApp';
+  const CTA  = 'Scrie-mi pe WhatsApp';
 
   // Message pre-filled in WhatsApp when the visitor taps through.
   // {url} is replaced with the page they came from.
@@ -26,14 +28,15 @@
   .pf-text { font-size: 13px; color: var(--muted); line-height: 1.65; margin: 0; }
   .pf-phone { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
   .pf-phone:hover { text-decoration: underline; }
-  .pf-btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px;
-            margin-top: 14px; padding: 12px 18px; border-radius: 3px;
+  /* Full width, and the same 16px gap the album cards use, so the button reads
+     as one more card in that stack rather than a stray inline link. */
+  .pf-btn { display: flex; align-items: center; justify-content: center; gap: 9px;
+            width: 100%; margin-top: 16px; padding: 14px 18px; border-radius: 3px;
             background: var(--accent); color: #fff; text-decoration: none;
-            font-family: var(--ui); font-size: 14px; font-weight: 600; letter-spacing: 0.1px; }
+            font-family: var(--ui); font-size: 15px; font-weight: 600; letter-spacing: 0.1px; }
   .pf-btn:hover { filter: brightness(1.08); }
   .pf-btn:active { transform: scale(0.995); }
   .pf-btn svg { flex: 0 0 auto; width: 17px; height: 17px; fill: currentColor; }
-  @media (max-width: 380px) { .pf-btn { width: 100%; } }
   /* Background-image pages (body.has-bg): white copy over the photo, with a
      dark shadow so it still reads against light areas of the image. Pages
      without a photo keep the dark text above — white would vanish on cream. */
@@ -75,6 +78,30 @@
     return p;
   }
 
+  function buildButton(href) {
+    const btn = document.createElement('a');
+    btn.className = 'pf-btn';
+    btn.href = href;
+    btn.target = '_blank';
+    btn.rel = 'noopener noreferrer';
+    btn.innerHTML = ICON + '<span></span>';
+    btn.querySelector('span').textContent = CTA;
+    return btn;
+  }
+
+  // Where the button goes: on the booking page, straight after the album /
+  // extra-page cards (they are in the markup even while hidden, so the slot is
+  // stable before the API answers); on the other public pages, above the
+  // content block, under the heading. Null means the page shape is unknown and
+  // the button stays with the text at the bottom.
+  function buttonSlot() {
+    const cards = document.querySelectorAll('.album-cta');
+    if (cards.length) return { node: cards[cards.length - 1], where: 'afterend' };
+    const content = document.getElementById('content') || document.getElementById('body');
+    if (content) return { node: content, where: 'beforebegin' };
+    return null;
+  }
+
   function mount() {
     const app = document.getElementById('app');
     if (!app || document.querySelector('.pf-wrap')) return;
@@ -84,20 +111,16 @@
     document.head.appendChild(style);
 
     const href = waHref();
+
     const wrap = document.createElement('div');
     wrap.className = 'pf-wrap';
     wrap.appendChild(buildText(href));
-
-    const btn = document.createElement('a');
-    btn.className = 'pf-btn';
-    btn.href = href;
-    btn.target = '_blank';
-    btn.rel = 'noopener noreferrer';
-    btn.innerHTML = ICON + '<span></span>';
-    btn.querySelector('span').textContent = CTA;
-    wrap.appendChild(btn);
-
     app.appendChild(wrap);
+
+    const btn = buildButton(href);
+    const slot = buttonSlot();
+    if (slot) slot.node.insertAdjacentElement(slot.where, btn);
+    else wrap.appendChild(btn);
   }
 
   if (document.readyState === 'loading') {
