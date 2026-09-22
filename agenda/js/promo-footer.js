@@ -25,8 +25,9 @@
   };
 
   // Message pre-filled in WhatsApp when the visitor taps through.
-  // {url} is replaced with the page they came from.
-  const PREFILL = 'Salut! Am vazut pagina {url} si vreau si eu un profil.';
+  // {url} is replaced with the page they came from; empty means the chat opens
+  // with nothing typed.
+  const PREFILL = '';
   // Same, for a button that writes to the profile's own number.
   const PROFILE_PREFILL = 'Salut! Am vazut pagina {url}.';
   // ---------------------------------------------------------------------------
@@ -66,6 +67,7 @@
   const ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.08-.3-.15-1.25-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.05 21.3h-.02a9.2 9.2 0 0 1-4.7-1.29l-.34-.2-3.5.92.93-3.41-.22-.35a9.19 9.19 0 0 1-1.41-4.9c0-5.08 4.14-9.21 9.23-9.21a9.16 9.16 0 0 1 6.52 2.7 9.13 9.13 0 0 1 2.7 6.52c-.01 5.08-4.15 9.22-9.21 9.22zM19.9 4.35A11.07 11.07 0 0 0 12.04 1C5.9 1 .91 5.99.9 12.12c0 1.95.51 3.86 1.48 5.54L.81 23.2l5.68-1.49a11.1 11.1 0 0 0 5.55 1.42h.01c6.13 0 11.12-4.99 11.13-11.12a11.06 11.06 0 0 0-3.27-7.87z"/></svg>';
 
   function waHref(number, template) {
+    if (!template) return 'https://wa.me/' + number;
     return 'https://wa.me/' + number
       + '?text=' + encodeURIComponent(template.replace('{url}', location.href));
   }
