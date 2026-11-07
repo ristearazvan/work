@@ -61,6 +61,10 @@
   .card p { font-size: 13px; color: var(--muted); line-height: 1.55; margin: 6px 0 0; }
   .item { background: var(--surface); border: 1px solid var(--hair); border-radius: 3px; overflow: hidden; margin-top: 12px; }
   .item img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--surface2); }
+  .item img { cursor: zoom-in; }
+  .lb { position: fixed; inset: 0; background: rgba(20,20,18,0.95); display: none; align-items: center; justify-content: center; z-index: 50; cursor: zoom-out; }
+  .lb.open { display: flex; }
+  .lb img { max-width: 96vw; max-height: 92vh; object-fit: contain; }
   .item .body { padding: 14px 16px 16px; }
   .item .note { font-size: 14px; color: var(--ink2); line-height: 1.55; white-space: pre-line; word-wrap: break-word; overflow-wrap: anywhere; }
   body.has-bg .item { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
@@ -118,15 +122,34 @@
       return;
     }
     const html = items.map(it => {
+      // Cards show a phone-sized preview; the full image opens on tap.
       const imgUrl = '/api/' + encodeURIComponent(slug) + '/extra-page/' + encodeURIComponent(it.id);
       const note = (it.note || '').trim();
       return '<div class="item">'
-        + `<img src="${imgUrl}" alt="" loading="lazy" />`
+        + `<img src="${imgUrl}/thumb" data-full="${imgUrl}" alt="" loading="lazy" decoding="async" />`
         + (note ? `<div class="body"><div class="note">${escapeHtml(note)}</div></div>` : '')
         + '</div>';
     }).join('');
     content.innerHTML = html;
   }
+
+  const lb = document.createElement('div');
+  lb.className = 'lb';
+  document.body.appendChild(lb);
+  lb.addEventListener('click', () => { lb.classList.remove('open'); lb.innerHTML = ''; });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && lb.classList.contains('open')) { lb.classList.remove('open'); lb.innerHTML = ''; }
+  });
+  content.addEventListener('click', (e) => {
+    const img = e.target.closest('img[data-full]');
+    if (!img) return;
+    const full = document.createElement('img');
+    full.src = img.dataset.full;
+    full.alt = '';
+    lb.innerHTML = '';
+    lb.appendChild(full);
+    lb.classList.add('open');
+  });
 
   async function load() {
     try {

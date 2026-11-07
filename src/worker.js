@@ -354,6 +354,11 @@ async function computeAvailability(env, accountId) {
   }
 
   const media = await mediaSummary(env, accountId);
+  const extraFirst = extraPageEnabled ? await env.DB.prepare(
+    `SELECT id FROM extra_page_items WHERE account_id = ?
+      ORDER BY display_order ASC, uploaded_at DESC LIMIT 1`
+  ).bind(accountId).first() : null;
+  const extraPageThumbId = extraFirst?.id || null;
 
   if (!bookingsEnabled) {
     return {
@@ -364,6 +369,7 @@ async function computeAvailability(env, accountId) {
       video_count: media.video.count, video_thumb_id: media.video.thumb_id,
       has_background: hasBackground, background_updated_at: backgroundUpdatedAt,
       extra_page_enabled: extraPageEnabled, extra_page_title: extraPageTitle,
+      extra_page_thumb_id: extraPageThumbId,
       buffer_min: bufferMin, advance_min: advanceMin, max_days: maxDays,
     };
   }
@@ -448,6 +454,7 @@ async function computeAvailability(env, accountId) {
     background_updated_at: backgroundUpdatedAt,
     extra_page_enabled: extraPageEnabled,
     extra_page_title: extraPageTitle,
+    extra_page_thumb_id: extraPageThumbId,
     buffer_min: bufferMin,
     advance_min: advanceMin,
     max_days: maxDays,
@@ -951,7 +958,8 @@ async function handlePublicGetMedia(request, env, slug, id) {
 // Photos: made on first request with the Images binding, then kept in R2.
 // Videos: the provider app captures a frame at upload and PUTs it here.
 // ─────────────────────────────────────────────
-const THUMB_WIDTH = 480;
+const THUMB_WIDTH = 480;          // album grid tiles (~200px wide on a phone)
+const EXTRA_THUMB_WIDTH = 960;    // extra-page cards span the full phone width
 const THUMB_MAX_BYTES = 512 * 1024;
 const ALLOWED_THUMB_MIMES = new Set(['image/jpeg', 'image/webp']);
 const thumbKey = (r2Key) => `thumbs/${r2Key}`;
@@ -964,37 +972,46 @@ async function handlePublicGetMediaThumb(request, env, slug, id) {
   ).bind(id, accountId).first();
   if (!row) return bad('not_found', 404);
 
-  const key = thumbKey(row.r2_key);
-  const cached = await env.MEDIA.get(key);
-  if (cached) {
-    return new Response(cached.body, {
-      headers: {
-        'content-type': cached.httpMetadata?.contentType || 'image/webp',
-        'cache-control': 'public, max-age=31536000, immutable',
-      },
-    });
-  }
+  const cached = await serveCachedThumb(env, row.r2_key);
+  if (cached) return cached;
 
   // No poster for this video yet; the page shows a placeholder instead.
   if (row.kind !== 'image') return bad('no_thumb', 404);
 
-  const original = await env.MEDIA.get(row.r2_key);
+  return await makeImageThumb(env, row.r2_key, THUMB_WIDTH,
+    new URL(`/api/${slug}/media/${id}`, request.url).toString());
+}
+
+// Resize a stored photo to WebP, keep it in R2 under thumbs/, and serve it.
+// If resizing fails, redirect to the full image (not cached under the thumb URL).
+async function makeImageThumb(env, r2Key, width, fallbackUrl) {
+  const original = await env.MEDIA.get(r2Key);
   if (!original) return bad('not_found', 404);
   let bytes;
   try {
     const out = await env.IMAGES.input(original.body)
-      .transform({ width: THUMB_WIDTH, fit: 'scale-down' })
+      .transform({ width, fit: 'scale-down' })
       .output({ format: 'image/webp', quality: 75 });
     bytes = await out.response().arrayBuffer();
   } catch (err) {
-    console.error('thumb transform failed', id, err && err.message);
-    // Fall back to the full photo, without caching it under the thumb URL.
-    return Response.redirect(new URL(`/api/${slug}/media/${id}`, request.url).toString(), 302);
+    console.error('thumb transform failed', r2Key, err && err.message);
+    return Response.redirect(fallbackUrl, 302);
   }
-  await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: 'image/webp' } });
+  await env.MEDIA.put(thumbKey(r2Key), bytes, { httpMetadata: { contentType: 'image/webp' } });
   return new Response(bytes, {
     headers: {
       'content-type': 'image/webp',
+      'cache-control': 'public, max-age=31536000, immutable',
+    },
+  });
+}
+
+async function serveCachedThumb(env, r2Key) {
+  const cached = await env.MEDIA.get(thumbKey(r2Key));
+  if (!cached) return null;
+  return new Response(cached.body, {
+    headers: {
+      'content-type': cached.httpMetadata?.contentType || 'image/webp',
       'cache-control': 'public, max-age=31536000, immutable',
     },
   });
@@ -1112,7 +1129,7 @@ async function handleDeleteExtraPageItem(request, env, id) {
     'SELECT r2_key FROM extra_page_items WHERE id = ? AND account_id = ?'
   ).bind(id, auth.account_id).first();
   if (!row) return bad('not_found', 404);
-  await env.MEDIA.delete(row.r2_key).catch(() => {});
+  await env.MEDIA.delete([row.r2_key, thumbKey(row.r2_key)]).catch(() => {});
   await env.DB.prepare(
     'DELETE FROM extra_page_items WHERE id = ? AND account_id = ?'
   ).bind(id, auth.account_id).run();
@@ -1173,6 +1190,19 @@ async function handlePublicListExtraPage(request, env, slug) {
     title: (cfg.extra_page_title || '').toString().trim(),
     items: results || [],
   });
+}
+
+async function handlePublicGetExtraPageThumb(request, env, slug, id) {
+  const accountId = await resolveSlug(env, slug);
+  if (!accountId) return bad('not_found', 404);
+  const row = await env.DB.prepare(
+    'SELECT r2_key FROM extra_page_items WHERE id = ? AND account_id = ?'
+  ).bind(id, accountId).first();
+  if (!row) return bad('not_found', 404);
+  const cached = await serveCachedThumb(env, row.r2_key);
+  if (cached) return cached;
+  return await makeImageThumb(env, row.r2_key, EXTRA_THUMB_WIDTH,
+    new URL(`/api/${slug}/extra-page/${id}`, request.url).toString());
 }
 
 async function handlePublicGetExtraPageImage(request, env, slug, id) {
@@ -1242,6 +1272,10 @@ export default {
       const pubExtraImage = pathname.match(/^\/api\/([a-z0-9-]+)\/extra-page\/([a-f0-9]{32})$/);
       if (pubExtraImage && request.method === 'GET') {
         return await handlePublicGetExtraPageImage(request, env, pubExtraImage[1], pubExtraImage[2]);
+      }
+      const pubExtraThumb = pathname.match(/^\/api\/([a-z0-9-]+)\/extra-page\/([a-f0-9]{32})\/thumb$/);
+      if (pubExtraThumb && request.method === 'GET') {
+        return await handlePublicGetExtraPageThumb(request, env, pubExtraThumb[1], pubExtraThumb[2]);
       }
       const pubExtraList = pathname.match(/^\/api\/([a-z0-9-]+)\/extra-page$/);
       if (pubExtraList && request.method === 'GET') {

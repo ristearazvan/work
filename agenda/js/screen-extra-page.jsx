@@ -243,14 +243,14 @@ function ExtraPageScreen({ c, state, onBack, onSessionExpired }) {
 
 function ExtraPageRow({ c, item, settings, busy, saveStatus, canUp, canDown, onChange, onUp, onDown, onDelete }) {
   const T = window.AG_T;
-  const url = window.AG_SYNC.extraPageImageUrl(settings, item.id);
+  const url = window.AG_SYNC.extraPageImageUrl(settings, item.id) + '/thumb';
   return (
     <div style={{
       background: c.surface, border: `1px solid ${c.hairline}`, borderRadius: 3,
       marginBottom: 12, overflow: 'hidden',
     }}>
       <div style={{ width: '100%', aspectRatio: '4 / 3', background: c.surface2 }}>
-        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        <img src={url} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       </div>
       <div style={{ padding: 14 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>

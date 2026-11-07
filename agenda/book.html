@@ -192,7 +192,7 @@
     <div class="arrow">→</div>
   </a>
   <a id="extra-page-cta" class="album-cta album-hidden" href="#">
-    <div class="thumb empty">✦</div>
+    <div class="thumb empty" id="extra-page-thumb">✦</div>
     <div class="meta">
       <div class="title" id="extra-page-title">Mai multe</div>
     </div>
@@ -235,6 +235,18 @@
     const titleEl = document.getElementById('extra-page-title');
     const label = (d.extra_page_title || '').trim();
     if (titleEl) titleEl.textContent = label || 'Mai multe';
+    // First picture of the page as the button's thumbnail.
+    const thumb = document.getElementById('extra-page-thumb');
+    if (thumb && d.extra_page_thumb_id) {
+      const src = `/api/${encodeURIComponent(slug)}/extra-page/${encodeURIComponent(d.extra_page_thumb_id)}/thumb`;
+      const probe = new Image();
+      probe.onload = () => {
+        thumb.classList.remove('empty');
+        thumb.textContent = '';
+        thumb.style.backgroundImage = `url(${src})`;
+      };
+      probe.src = src;
+    }
   }
 
   function applyBackground(d) {
