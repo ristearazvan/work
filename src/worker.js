@@ -1125,24 +1125,12 @@ async function handlePublicGetExtraPageImage(request, env, slug, id) {
 // ─────────────────────────────────────────────
 // Router
 // ─────────────────────────────────────────────
-const DISABLED_SLUGS = new Set(['amalia']);
-
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const { pathname } = url;
 
     try {
-      // Temporarily disabled public pages: /book/<slug>/* and /api/<slug>/*
-      // answer with a bare 500. Remove the slug from DISABLED_SLUGS to restore.
-      const disabledMatch = pathname.match(/^\/(?:book|api)\/([a-z0-9-]+)(?:\/|$)/);
-      if (disabledMatch && DISABLED_SLUGS.has(disabledMatch[1])) {
-        return new Response('Server error', {
-          status: 500,
-          headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
-        });
-      }
-
       // Auth
       if (pathname === '/api/login' && request.method === 'POST') {
         return await handlePostLogin(request, env);
