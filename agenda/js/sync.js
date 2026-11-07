@@ -290,6 +290,68 @@
     return baseUrl(settings) + '/api/' + encodeURIComponent(settings.slug) + '/media/' + encodeURIComponent(id);
   }
 
+  // Small preview for album grids (photo thumbnail or video poster frame).
+  function mediaThumbUrl(settings, id) {
+    return mediaUrl(settings, id) + '/thumb';
+  }
+
+  // Grab one frame from a video (a File/Blob or a URL) as a small JPEG.
+  // Resolves with a Blob, or null if the browser can't decode it.
+  function captureVideoPoster(source, maxWidth = 480) {
+    return new Promise((resolve) => {
+      const v = document.createElement('video');
+      const isBlob = typeof source !== 'string';
+      const src = isBlob ? URL.createObjectURL(source) : source;
+      let done = false;
+      const finish = (blob) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        v.removeAttribute('src');
+        v.load();
+        if (isBlob) URL.revokeObjectURL(src);
+        resolve(blob || null);
+      };
+      const timer = setTimeout(() => finish(null), 15000);
+      v.muted = true;
+      v.playsInline = true;
+      v.preload = 'auto';
+      if (!isBlob) v.crossOrigin = 'anonymous';
+      v.onerror = () => finish(null);
+      v.onloadeddata = () => {
+        // Skip a black first frame where possible.
+        const t = Math.min(0.5, (v.duration || 1) / 4);
+        v.currentTime = Number.isFinite(t) && t > 0 ? t : 0;
+      };
+      v.onseeked = () => {
+        try {
+          const w = v.videoWidth, h = v.videoHeight;
+          if (!w || !h) return finish(null);
+          const scale = Math.min(1, maxWidth / w);
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(w * scale);
+          canvas.height = Math.round(h * scale);
+          canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((b) => finish(b), 'image/jpeg', 0.75);
+        } catch {
+          finish(null);
+        }
+      };
+      v.src = src;
+    });
+  }
+
+  async function uploadMediaThumb(settings, id, blob) {
+    if (!configured(settings) || !blob) return { skipped: true };
+    const res = await fetch(baseUrl(settings) + '/api/media/' + encodeURIComponent(id) + '/thumb', {
+      method: 'PUT',
+      headers: { 'authorization': 'Bearer ' + settings.session, 'content-type': blob.type || 'image/jpeg' },
+      body: blob,
+    });
+    if (res.status === 401) throw new SessionExpiredError();
+    return { ok: res.ok };
+  }
+
   // ── Extra page items ──────────────────────────────────────────
   async function fetchExtraPage(settings) {
     if (!configured(settings)) return { items: [], used_bytes: 0, limit_bytes: 0, item_limit: 0 };
@@ -364,6 +426,7 @@
     login, logout,
     pushBusy, pushConfig, fetchConfig, fetchInbox, decide, resetRemote,
     fetchMedia, uploadMedia, deleteMedia, reorderMedia, mediaUrl,
+    mediaThumbUrl, captureVideoPoster, uploadMediaThumb,
     uploadBackground, deleteBackground, backgroundUrl,
     fetchExtraPage, uploadExtraPageImage, updateExtraPageItem,
     deleteExtraPageItem, reorderExtraPage, extraPageImageUrl,

@@ -261,18 +261,24 @@
       const countEl = document.getElementById(countId);
       if (countEl) countEl.textContent = count === 1 ? singular : plural.replace('{n}', count);
       if (thumb && thumbMediaId) {
-        thumb.classList.remove('empty');
-        thumb.textContent = '';
-        thumb.style.backgroundImage = `url(/api/${encodeURIComponent(slug)}/media/${encodeURIComponent(thumbMediaId)})`;
+        // Preload the small preview first so a missing video poster keeps
+        // the placeholder icon instead of showing an empty box.
+        const src = `/api/${encodeURIComponent(slug)}/media/${encodeURIComponent(thumbMediaId)}/thumb`;
+        const probe = new Image();
+        probe.onload = () => {
+          thumb.classList.remove('empty');
+          thumb.textContent = '';
+          thumb.style.backgroundImage = `url(${src})`;
+        };
+        probe.src = src;
       }
     };
     renderOne(albumCtaPhotos, 'album-thumb-photos', 'album-count-photos',
               Number(d.photo_count) || 0, d.photo_thumb_id,
               '1 fotografie', '{n} fotografii');
-    // Video thumbs are not rendered (CSS background-image can't display a
-    // video stream); the ▶ placeholder is used instead.
+    // Videos use their poster frame; without one the ▶ placeholder stays.
     renderOne(albumCtaVideos, 'album-thumb-videos', 'album-count-videos',
-              Number(d.video_count) || 0, null,
+              Number(d.video_count) || 0, d.video_thumb_id,
               '1 clip', '{n} clipuri');
   }
 

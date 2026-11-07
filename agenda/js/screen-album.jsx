@@ -58,8 +58,18 @@ function AlbumScreen({ c, state, onBack, onSessionExpired }) {
         }
         setStage('upload');
         setProgress(0);
-        await SYNC.uploadMedia(settings, file, (p) => setProgress(p));
+        const saved = await SYNC.uploadMedia(settings, file, (p) => setProgress(p));
         uploaded++;
+        // Videos get a poster frame for the album grids. Best-effort: if the
+        // browser can't decode the clip, the grid shows a placeholder instead.
+        if (saved && saved.id && saved.kind === 'video') {
+          try {
+            const poster = await SYNC.captureVideoPoster(file);
+            if (poster) await SYNC.uploadMediaThumb(settings, saved.id, poster);
+          } catch (posterErr) {
+            if (posterErr instanceof SYNC.SessionExpiredError) throw posterErr;
+          }
+        }
       }
     } catch (err) {
       if (err instanceof SYNC.SessionExpiredError) { onSessionExpired(); return; }
@@ -254,19 +264,56 @@ function AlbumSection({ c, title, kind, section, emptyTitle, busy, settings, onM
   );
 }
 
+// Videos uploaded before poster frames existed get one made the first time the
+// provider opens the album. One at a time, so the album doesn't pull every
+// clip at once.
+let posterQueue = Promise.resolve();
+const posterTried = new Set();
+function backfillPoster(settings, id) {
+  if (posterTried.has(id)) return posterQueue;
+  posterTried.add(id);
+  const SYNC = window.AG_SYNC;
+  posterQueue = posterQueue.then(async () => {
+    try {
+      const blob = await SYNC.captureVideoPoster(SYNC.mediaUrl(settings, id));
+      if (!blob) return false;
+      const r = await SYNC.uploadMediaThumb(settings, id, blob);
+      return !!(r && r.ok);
+    } catch {
+      return false;
+    }
+  });
+  return posterQueue;
+}
+
 function AlbumTile({ item, c, settings, disabled, canUp, canDown, onUp, onDown, onDelete }) {
   const T = window.AG_T;
   const url = window.AG_SYNC.mediaUrl(settings, item.id);
+  const thumbUrl = window.AG_SYNC.mediaThumbUrl(settings, item.id);
+  const [thumbState, setThumbState] = React.useState('thumb');   // 'thumb' | 'missing' | 'retry'
+  const fill = { width: '100%', height: '100%', objectFit: 'cover', display: 'block' };
+
+  const onThumbError = () => {
+    if (item.kind !== 'video') { setThumbState('missing'); return; }
+    if (thumbState === 'retry') { setThumbState('missing'); return; }
+    setThumbState('missing');
+    backfillPoster(settings, item.id).then((ok) => { if (ok) setThumbState('retry'); });
+  };
+
+  let preview;
+  if (thumbState !== 'missing') {
+    const src = thumbState === 'retry' ? thumbUrl + '?r=1' : thumbUrl;
+    preview = <img src={src} alt="" loading="lazy" decoding="async" onError={onThumbError} style={fill} />;
+  } else if (item.kind === 'image') {
+    preview = <img src={url} alt="" loading="lazy" decoding="async" style={fill} />;
+  } else {
+    preview = <video src={url} muted playsInline preload="metadata" style={fill} />;
+  }
+
   return (
     <div style={{ background: c.surface, border: `1px solid ${c.hairline}`, borderRadius: 3, overflow: 'hidden' }}>
       <div style={{ width: '100%', aspectRatio: '1 / 1', background: c.surface2, position: 'relative' }}>
-        {item.kind === 'image' ? (
-          <img src={url} alt=""
-               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        ) : (
-          <video src={url} muted playsInline preload="metadata"
-                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        )}
+        {preview}
         {item.kind === 'video' && (
           <div style={{
             position: 'absolute', bottom: 6, left: 6,

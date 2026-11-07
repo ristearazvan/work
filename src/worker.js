@@ -754,7 +754,7 @@ async function handleDeleteMedia(request, env, id) {
     'SELECT r2_key FROM media WHERE id = ? AND account_id = ?'
   ).bind(id, auth.account_id).first();
   if (!row) return bad('not_found', 404);
-  await env.MEDIA.delete(row.r2_key);
+  await env.MEDIA.delete([row.r2_key, thumbKey(row.r2_key)]);
   await env.DB.prepare(
     'DELETE FROM media WHERE id = ? AND account_id = ?'
   ).bind(id, auth.account_id).run();
@@ -944,6 +944,78 @@ async function handlePublicGetMedia(request, env, slug, id) {
     status: 200,
     headers: { ...common, 'content-length': String(size) },
   });
+}
+
+// ─────────────────────────────────────────────
+// Media thumbnails — small previews for album grids.
+// Photos: made on first request with the Images binding, then kept in R2.
+// Videos: the provider app captures a frame at upload and PUTs it here.
+// ─────────────────────────────────────────────
+const THUMB_WIDTH = 480;
+const THUMB_MAX_BYTES = 512 * 1024;
+const ALLOWED_THUMB_MIMES = new Set(['image/jpeg', 'image/webp']);
+const thumbKey = (r2Key) => `thumbs/${r2Key}`;
+
+async function handlePublicGetMediaThumb(request, env, slug, id) {
+  const accountId = await resolveSlug(env, slug);
+  if (!accountId) return bad('not_found', 404);
+  const row = await env.DB.prepare(
+    'SELECT r2_key, kind FROM media WHERE id = ? AND account_id = ?'
+  ).bind(id, accountId).first();
+  if (!row) return bad('not_found', 404);
+
+  const key = thumbKey(row.r2_key);
+  const cached = await env.MEDIA.get(key);
+  if (cached) {
+    return new Response(cached.body, {
+      headers: {
+        'content-type': cached.httpMetadata?.contentType || 'image/webp',
+        'cache-control': 'public, max-age=31536000, immutable',
+      },
+    });
+  }
+
+  // No poster for this video yet; the page shows a placeholder instead.
+  if (row.kind !== 'image') return bad('no_thumb', 404);
+
+  const original = await env.MEDIA.get(row.r2_key);
+  if (!original) return bad('not_found', 404);
+  let bytes;
+  try {
+    const out = await env.IMAGES.input(original.body)
+      .transform({ width: THUMB_WIDTH, fit: 'scale-down' })
+      .output({ format: 'image/webp', quality: 75 });
+    bytes = await out.response().arrayBuffer();
+  } catch (err) {
+    console.error('thumb transform failed', id, err && err.message);
+    // Fall back to the full photo, without caching it under the thumb URL.
+    return Response.redirect(new URL(`/api/${slug}/media/${id}`, request.url).toString(), 302);
+  }
+  await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: 'image/webp' } });
+  return new Response(bytes, {
+    headers: {
+      'content-type': 'image/webp',
+      'cache-control': 'public, max-age=31536000, immutable',
+    },
+  });
+}
+
+// Provider uploads a poster frame for one of their videos.
+async function handlePutMediaThumb(request, env, id) {
+  const auth = await requireSession(request, env);
+  if (!auth.account_id) return auth.response;
+  const mimeType = (request.headers.get('content-type') || '').split(';')[0].trim();
+  if (!ALLOWED_THUMB_MIMES.has(mimeType)) return bad('invalid_mime', 415);
+  const row = await env.DB.prepare(
+    'SELECT r2_key, kind FROM media WHERE id = ? AND account_id = ?'
+  ).bind(id, auth.account_id).first();
+  if (!row) return bad('not_found', 404);
+  if (row.kind !== 'video') return bad('not_video', 400);
+  const bytes = await request.arrayBuffer();
+  if (!bytes.byteLength) return bad('invalid_size');
+  if (bytes.byteLength > THUMB_MAX_BYTES) return bad('file_too_large', 413);
+  await env.MEDIA.put(thumbKey(row.r2_key), bytes, { httpMetadata: { contentType: mimeType } });
+  return json({ ok: true });
 }
 
 // ─────────────────────────────────────────────
@@ -1155,6 +1227,10 @@ export default {
       if (pubMediaGet && request.method === 'GET') {
         return await handlePublicGetMedia(request, env, pubMediaGet[1], pubMediaGet[2]);
       }
+      const pubMediaThumb = pathname.match(/^\/api\/([a-z0-9-]+)\/media\/([a-f0-9]{32})\/thumb$/);
+      if (pubMediaThumb && request.method === 'GET') {
+        return await handlePublicGetMediaThumb(request, env, pubMediaThumb[1], pubMediaThumb[2]);
+      }
       const pubBackground = pathname.match(/^\/api\/([a-z0-9-]+)\/background$/);
       if (pubBackground && request.method === 'GET') {
         return await handlePublicGetBackground(request, env, pubBackground[1]);
@@ -1211,6 +1287,10 @@ export default {
       const mediaDelete = pathname.match(/^\/api\/media\/([a-f0-9]{32})$/);
       if (mediaDelete && request.method === 'DELETE') {
         return await handleDeleteMedia(request, env, mediaDelete[1]);
+      }
+      const mediaThumbPut = pathname.match(/^\/api\/media\/([a-f0-9]{32})\/thumb$/);
+      if (mediaThumbPut && request.method === 'PUT') {
+        return await handlePutMediaThumb(request, env, mediaThumbPut[1]);
       }
       if (pathname === '/api/extra-page' && request.method === 'GET') {
         return await handleGetExtraPage(request, env);
