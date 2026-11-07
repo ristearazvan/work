@@ -618,7 +618,11 @@ async function handlePutConfig(request, env) {
 
   const extraPageTitle = (body.extra_page_title || '').toString().trim().slice(0, EXTRA_PAGE_TITLE_MAX) || null;
   const extraPageEnabled = body.extra_page_enabled ? 1 : 0;
-  const extraPageCategories = normalizeExtraPageCategories(body.extra_page_categories);
+  // Older app builds don't send categories — keep what's stored instead of
+  // wiping it (NULL here → COALESCE keeps the existing column below).
+  const extraPageCategoriesJson = Array.isArray(body.extra_page_categories)
+    ? JSON.stringify(normalizeExtraPageCategories(body.extra_page_categories))
+    : null;
 
   await env.DB.prepare(
     `INSERT INTO config (account_id, hours_json, buffer_min, advance_min, max_days,
@@ -641,14 +645,14 @@ async function handlePutConfig(request, env) {
        service_prices_json = excluded.service_prices_json,
        extra_page_title = excluded.extra_page_title,
        extra_page_enabled = excluded.extra_page_enabled,
-       extra_page_categories_json = excluded.extra_page_categories_json,
+       extra_page_categories_json = COALESCE(excluded.extra_page_categories_json, config.extra_page_categories_json),
        updated_at = excluded.updated_at`
   ).bind(
     auth.account_id,
     JSON.stringify(normalized), bufferMin, advanceMin, maxDays, enabled, bookingsOn,
     JSON.stringify(services), pageTitle, pageNotes, JSON.stringify(servicePrices),
     extraPageTitle, extraPageEnabled,
-    JSON.stringify(extraPageCategories),
+    extraPageCategoriesJson,
     Math.floor(Date.now() / 1000)
   ).run();
 
