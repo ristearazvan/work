@@ -45,6 +45,31 @@ const ALLOWED_MEDIA = {
 const EXTRA_PAGE_ITEMS_MAX  = 50;
 const EXTRA_PAGE_NOTE_MAX   = 500;
 const EXTRA_PAGE_IMAGE_MAX  = 10 * 1024 * 1024;
+const EXTRA_PAGE_CATEGORIES_MAX = 20;
+const EXTRA_PAGE_CATEGORY_NAME_MAX = 30;
+const CATEGORY_ID_RE = /^[a-z0-9]{1,32}$/;
+
+// Categories inside the extra-page album: [{ id, name }], deduped by id,
+// blank names dropped, capped in count and name length.
+function normalizeExtraPageCategories(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const c of raw) {
+    if (!c || typeof c !== 'object') continue;
+    const id = (c.id || '').toString();
+    const name = (c.name || '').toString().trim().slice(0, EXTRA_PAGE_CATEGORY_NAME_MAX);
+    if (!CATEGORY_ID_RE.test(id) || !name || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name });
+    if (out.length >= EXTRA_PAGE_CATEGORIES_MAX) break;
+  }
+  return out;
+}
+
+function parseExtraPageCategoriesJson(s) {
+  try { return normalizeExtraPageCategories(JSON.parse(s || '[]')); } catch { return []; }
+}
 
 async function totalUsedBytes(env, accountId) {
   const a = await env.DB.prepare(
@@ -559,6 +584,7 @@ async function handleGetConfig(request, env) {
     background_updated_at: Number(cfg.background_updated_at) || 0,
     extra_page_enabled: !!cfg.extra_page_enabled,
     extra_page_title: cfg.extra_page_title || '',
+    extra_page_categories: parseExtraPageCategoriesJson(cfg.extra_page_categories_json),
   });
 }
 
@@ -592,14 +618,16 @@ async function handlePutConfig(request, env) {
 
   const extraPageTitle = (body.extra_page_title || '').toString().trim().slice(0, EXTRA_PAGE_TITLE_MAX) || null;
   const extraPageEnabled = body.extra_page_enabled ? 1 : 0;
+  const extraPageCategories = normalizeExtraPageCategories(body.extra_page_categories);
 
   await env.DB.prepare(
     `INSERT INTO config (account_id, hours_json, buffer_min, advance_min, max_days,
                          public_enabled, bookings_enabled, services_json,
                          page_title, page_notes, service_prices_json,
                          extra_page_title, extra_page_enabled,
+                         extra_page_categories_json,
                          updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(account_id) DO UPDATE SET
        hours_json = excluded.hours_json,
        buffer_min = excluded.buffer_min,
@@ -613,12 +641,14 @@ async function handlePutConfig(request, env) {
        service_prices_json = excluded.service_prices_json,
        extra_page_title = excluded.extra_page_title,
        extra_page_enabled = excluded.extra_page_enabled,
+       extra_page_categories_json = excluded.extra_page_categories_json,
        updated_at = excluded.updated_at`
   ).bind(
     auth.account_id,
     JSON.stringify(normalized), bufferMin, advanceMin, maxDays, enabled, bookingsOn,
     JSON.stringify(services), pageTitle, pageNotes, JSON.stringify(servicePrices),
     extraPageTitle, extraPageEnabled,
+    JSON.stringify(extraPageCategories),
     Math.floor(Date.now() / 1000)
   ).run();
 
@@ -1042,7 +1072,7 @@ async function handleGetExtraPage(request, env) {
   const auth = await requireSession(request, env);
   if (!auth.account_id) return auth.response;
   const { results } = await env.DB.prepare(
-    `SELECT id, mime_type, size_bytes, note, display_order, uploaded_at
+    `SELECT id, mime_type, size_bytes, note, category_id, display_order, uploaded_at
        FROM extra_page_items WHERE account_id = ?
       ORDER BY display_order ASC, uploaded_at DESC`
   ).bind(auth.account_id).all();
@@ -1080,6 +1110,9 @@ async function handlePostExtraPage(request, env) {
     return json({ error: 'quota_exceeded', used_bytes: used, limit_bytes: MEDIA_LIMIT_BYTES }, { status: 413 });
   }
 
+  const catParam = new URL(request.url).searchParams.get('category') || '';
+  const categoryId = CATEGORY_ID_RE.test(catParam) ? catParam : null;
+
   const id = uid();
   const r2Key = `${auth.account_id}/extra/${id}.${spec.ext}`;
   await env.MEDIA.put(r2Key, request.body, {
@@ -1096,13 +1129,13 @@ async function handlePostExtraPage(request, env) {
 
   await env.DB.prepare(
     `INSERT INTO extra_page_items
-       (id, account_id, r2_key, mime_type, size_bytes, note, display_order, uploaded_at)
-     VALUES (?, ?, ?, ?, ?, '', ?, ?)`
-  ).bind(id, auth.account_id, r2Key, mimeType, size, order, now).run();
+       (id, account_id, r2_key, mime_type, size_bytes, note, category_id, display_order, uploaded_at)
+     VALUES (?, ?, ?, ?, ?, '', ?, ?, ?)`
+  ).bind(id, auth.account_id, r2Key, mimeType, size, categoryId, order, now).run();
 
   return json({
     id, mime_type: mimeType, size_bytes: size,
-    note: '', display_order: order, uploaded_at: now,
+    note: '', category_id: categoryId, display_order: order, uploaded_at: now,
   });
 }
 
@@ -1112,14 +1145,27 @@ async function handlePutExtraPageItem(request, env, id) {
   let body;
   try { body = await request.json(); } catch { return bad('invalid_json'); }
 
-  const note = (body.note || '').toString().slice(0, EXTRA_PAGE_NOTE_MAX);
+  const sets = [];
+  const binds = [];
+  const out = { ok: true, id };
+  if ('note' in body) {
+    const note = (body.note || '').toString().slice(0, EXTRA_PAGE_NOTE_MAX);
+    sets.push('note = ?'); binds.push(note); out.note = note;
+  }
+  if ('category_id' in body) {
+    const raw = body.category_id == null ? '' : body.category_id.toString();
+    if (raw && !CATEGORY_ID_RE.test(raw)) return bad('invalid_category');
+    const categoryId = raw || null;
+    sets.push('category_id = ?'); binds.push(categoryId); out.category_id = categoryId;
+  }
+  if (!sets.length) return bad('nothing_to_update');
 
   const res = await env.DB.prepare(
-    'UPDATE extra_page_items SET note = ? WHERE id = ? AND account_id = ?'
-  ).bind(note, id, auth.account_id).run();
+    `UPDATE extra_page_items SET ${sets.join(', ')} WHERE id = ? AND account_id = ?`
+  ).bind(...binds, id, auth.account_id).run();
   const changes = res.meta?.changes ?? res.changes ?? 0;
   if (!changes) return bad('not_found', 404);
-  return json({ ok: true, id, note });
+  return json(out);
 }
 
 async function handleDeleteExtraPageItem(request, env, id) {
@@ -1174,21 +1220,27 @@ async function handlePublicListExtraPage(request, env, slug) {
   // Hide the catalogue if the public page is off OR the toggle is off — keep
   // direct ID guesses from leaking content the provider has retracted.
   const cfg = await env.DB.prepare(
-    'SELECT public_enabled, extra_page_enabled, extra_page_title FROM config WHERE account_id = ?'
+    'SELECT public_enabled, extra_page_enabled, extra_page_title, extra_page_categories_json FROM config WHERE account_id = ?'
   ).bind(accountId).first();
   const publicOn = !!(cfg && cfg.public_enabled);
   const extraOn = !!(cfg && cfg.extra_page_enabled);
-  if (!publicOn || !extraOn) return json({ enabled: false, items: [], title: '' });
+  if (!publicOn || !extraOn) return json({ enabled: false, items: [], categories: [], title: '' });
 
+  const categories = parseExtraPageCategoriesJson(cfg.extra_page_categories_json);
+  const known = new Set(categories.map(c => c.id));
   const { results } = await env.DB.prepare(
-    `SELECT id, mime_type, note, display_order, uploaded_at
+    `SELECT id, mime_type, note, category_id, display_order, uploaded_at
        FROM extra_page_items WHERE account_id = ?
       ORDER BY display_order ASC, uploaded_at DESC`
   ).bind(accountId).all();
   return json({
     enabled: true,
     title: (cfg.extra_page_title || '').toString().trim(),
-    items: results || [],
+    categories,
+    // Items pointing at a deleted category fall back to uncategorised.
+    items: (results || []).map(it => ({
+      ...it, category_id: known.has(it.category_id) ? it.category_id : null,
+    })),
   });
 }
 

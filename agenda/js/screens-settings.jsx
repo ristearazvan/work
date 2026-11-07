@@ -636,8 +636,6 @@ function ExtraPageEditor({ c, s, setS, T, onOpenExtraPage }) {
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: c.muted, marginBottom: 12, lineHeight: 1.5 }}>{T.extraPageHint}</div>
-
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '12px 0', borderBottom: `1px solid ${c.hairline2}`,
@@ -656,12 +654,70 @@ function ExtraPageEditor({ c, s, setS, T, onOpenExtraPage }) {
         <div style={{ fontSize: 11, color: c.muted, marginTop: 6 }}>{T.extraPageTitleHint}</div>
       </FieldBlock>
 
+      <ExtraPageCategoriesEditor c={c} s={s} setS={setS} T={T} />
+
       <button onClick={onOpenExtraPage} style={{
         width: '100%', padding: '12px', border: `1px solid ${c.hairline}`, background: c.surface,
         borderRadius: 3, fontFamily: FONTS.ui, fontSize: 13, color: c.ink, cursor: 'pointer',
         letterSpacing: 0.3, fontWeight: 500,
       }}>{T.extraPageManage}</button>
     </div>
+  );
+}
+
+// Categories inside the extra-page album. Each one becomes its own sub-album
+// on the public page; pictures are assigned to a category from the editor.
+function ExtraPageCategoriesEditor({ c, s, setS, T }) {
+  const cats = Array.isArray(s.extraPageCategories) ? s.extraPageCategories : [];
+  const [draft, setDraft] = React.useState('');
+  // Name each row had when focused, so blanking it out can be undone on blur.
+  const before = React.useRef({});
+  const MAX = 20;
+
+  const add = () => {
+    const name = draft.trim().slice(0, 30);
+    if (!name || cats.length >= MAX) return;
+    const id = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+    setS({ extraPageCategories: [...cats, { id, name }] });
+    setDraft('');
+  };
+  const rename = (id, name) =>
+    setS({ extraPageCategories: cats.map(x => x.id === id ? { ...x, name: name.slice(0, 30) } : x) });
+  const remove = (cat) => {
+    if (!window.confirm(T.extraPageCategoryDeleteConfirm.replace('{name}', cat.name))) return;
+    setS({ extraPageCategories: cats.filter(x => x.id !== cat.id) });
+  };
+
+  return (
+    <FieldBlock label={T.extraPageCategories}>
+      <div style={{ fontSize: 11, color: c.muted, marginBottom: 10, lineHeight: 1.5 }}>{T.extraPageCategoriesHint}</div>
+      {cats.map(cat => (
+        <div key={cat.id} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+          <input type="text" maxLength={30} value={cat.name}
+            onFocus={() => { before.current[cat.id] = cat.name; }}
+            onChange={e => rename(cat.id, e.target.value)}
+            onBlur={e => { if (!e.target.value.trim()) rename(cat.id, before.current[cat.id] || ''); }}
+            style={{ ...inp(c, FONTS.ui, 14), flex: 1, minWidth: 0, padding: '10px 12px' }} />
+          <button onClick={() => remove(cat)} aria-label="Șterge" style={{
+            ...miniBtn(c), color: c.danger, padding: '0 12px', fontSize: 14,
+          }}>✕</button>
+        </div>
+      ))}
+      {cats.length < MAX ? (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input type="text" maxLength={30} value={draft} placeholder={T.extraPageCategoryPh}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+            style={{ ...inp(c, FONTS.ui, 14), flex: 1, minWidth: 0, padding: '10px 12px' }} />
+          <button onClick={add} disabled={!draft.trim()} style={{
+            ...miniBtn(c), padding: '0 14px', fontSize: 12, fontWeight: 600,
+            opacity: draft.trim() ? 1 : 0.5, cursor: draft.trim() ? 'pointer' : 'not-allowed',
+          }}>{T.extraPageCategoryAdd}</button>
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: c.muted }}>{T.extraPageCategoryLimit}</div>
+      )}
+    </FieldBlock>
   );
 }
 

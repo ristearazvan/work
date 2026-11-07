@@ -56,6 +56,9 @@
       service_prices: settings.servicePrices || {},
       extra_page_enabled: !!settings.extraPageEnabled,
       extra_page_title: (settings.extraPageTitle || '').toString(),
+      extra_page_categories: (settings.extraPageCategories || [])
+        .filter(c => c && c.id && (c.name || '').trim())
+        .map(c => ({ id: c.id, name: c.name.trim() })),
     };
   }
 
@@ -361,14 +364,15 @@
     });
   }
 
-  function uploadExtraPageImage(settings, file, onProgress) {
+  function uploadExtraPageImage(settings, file, onProgress, categoryId) {
     return new Promise((resolve, reject) => {
       if (!configured(settings)) {
         reject(new Error('not_configured'));
         return;
       }
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', baseUrl(settings) + '/api/extra-page', true);
+      const q = categoryId ? '?category=' + encodeURIComponent(categoryId) : '';
+      xhr.open('POST', baseUrl(settings) + '/api/extra-page' + q, true);
       xhr.setRequestHeader('authorization', 'Bearer ' + settings.session);
       xhr.setRequestHeader('content-type', file.type || 'application/octet-stream');
       xhr.upload.onprogress = (e) => {
@@ -392,12 +396,13 @@
     });
   }
 
-  async function updateExtraPageItem(settings, id, { note }) {
+  // patch: { note?, category_id? } — only the fields present are updated.
+  async function updateExtraPageItem(settings, id, patch) {
     if (!configured(settings)) return { skipped: true };
     return doFetch(settings, '/api/extra-page/' + encodeURIComponent(id), {
       method: 'PUT',
       headers: authHeaders(settings),
-      body: JSON.stringify({ note }),
+      body: JSON.stringify(patch),
     });
   }
 

@@ -73,6 +73,7 @@ function App() {
     next.backgroundUpdatedAt = Number(cfg.background_updated_at) || 0;
     next.extraPageEnabled = !!cfg.extra_page_enabled;
     next.extraPageTitle = cfg.extra_page_title || '';
+    next.extraPageCategories = Array.isArray(cfg.extra_page_categories) ? cfg.extra_page_categories : [];
     return next;
   }, []);
 
@@ -200,6 +201,7 @@ function App() {
     d: state.settings.maxDays, e: state.settings.publicEnabled, bk: state.settings.bookingsEnabled, s: state.settings.services,
     pt: state.settings.pageTitle, pn: state.settings.pageNotes, sp: state.settings.servicePrices,
     xe: state.settings.extraPageEnabled, xt: state.settings.extraPageTitle,
+    xc: state.settings.extraPageCategories,
   }) : '';
   const firstCfgRun = React.useRef(true);
   React.useEffect(() => {

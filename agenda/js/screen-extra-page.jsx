@@ -7,6 +7,12 @@ function ExtraPageScreen({ c, state, onBack, onSessionExpired }) {
   const T = window.AG_T;
   const SYNC = window.AG_SYNC;
   const settings = state.settings;
+  const categories = Array.isArray(settings.extraPageCategories) ? settings.extraPageCategories : [];
+  const catIds = new Set(categories.map(x => x.id));
+  // 'all' | '__none__' | category id. New uploads land in the selected category.
+  const [filter, setFilter] = React.useState('all');
+  const activeFilter = filter === 'all' || filter === '__none__' || catIds.has(filter) ? filter : 'all';
+  const catOf = (it) => (it.category_id && catIds.has(it.category_id)) ? it.category_id : null;
 
   const [items, setItems] = React.useState([]);
   const [usedBytes, setUsedBytes] = React.useState(0);
@@ -88,6 +94,21 @@ function ExtraPageScreen({ c, state, onBack, onSessionExpired }) {
     scheduleSave(id);
   };
 
+  // Category changes save immediately (no typing to debounce).
+  const setCategory = async (id, categoryId) => {
+    setItems(prev => prev.map(it => it.id === id ? { ...it, category_id: categoryId } : it));
+    flagSaving(id);
+    try {
+      await SYNC.updateExtraPageItem(settings, id, { category_id: categoryId });
+      flagSaved(id);
+    } catch (e) {
+      if (e instanceof SYNC.SessionExpiredError) { onSessionExpired(); return; }
+      setError(e.message || T.extraPageError);
+      setSaveState(s => { const { [id]: _, ...rest } = s; return rest; });
+      await refresh();
+    }
+  };
+
   const pickFile = () => { if (fileRef.current) fileRef.current.click(); };
 
   const onFileChosen = async (e) => {
@@ -112,7 +133,8 @@ function ExtraPageScreen({ c, state, onBack, onSessionExpired }) {
           continue;
         }
         setProgress(0);
-        await SYNC.uploadExtraPageImage(settings, file, (p) => setProgress(p));
+        const uploadCat = activeFilter === 'all' || activeFilter === '__none__' ? null : activeFilter;
+        await SYNC.uploadExtraPageImage(settings, file, (p) => setProgress(p), uploadCat);
       }
     } catch (err) {
       if (err instanceof SYNC.SessionExpiredError) { onSessionExpired(); return; }
@@ -129,11 +151,19 @@ function ExtraPageScreen({ c, state, onBack, onSessionExpired }) {
     }
   };
 
+  const visible = activeFilter === 'all' ? items
+    : activeFilter === '__none__' ? items.filter(it => !catOf(it))
+    : items.filter(it => catOf(it) === activeFilter);
+
+  // idx is a position in the visible list; swap with the neighbouring visible
+  // item, keeping everything else in the full order where it was.
   const move = async (idx, direction) => {
     const target = idx + direction;
-    if (target < 0 || target >= items.length || busy) return;
+    if (target < 0 || target >= visible.length || busy) return;
+    const a = items.indexOf(visible[idx]);
+    const b = items.indexOf(visible[target]);
     const next = items.slice();
-    [next[idx], next[target]] = [next[target], next[idx]];
+    [next[a], next[b]] = [next[b], next[a]];
     setItems(next);
     setBusy(true);
     try {
@@ -215,20 +245,43 @@ function ExtraPageScreen({ c, state, onBack, onSessionExpired }) {
           )}
         </div>
 
-        {loading ? null : items.length === 0 ? (
+        {categories.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, WebkitOverflowScrolling: 'touch' }}>
+            {[
+              { id: 'all', name: T.extraPageCategoryAll, n: items.length },
+              ...categories.map(cat => ({ id: cat.id, name: cat.name, n: items.filter(it => catOf(it) === cat.id).length })),
+              { id: '__none__', name: T.extraPageCategoryNone, n: items.filter(it => !catOf(it)).length },
+            ].map(chip => {
+              const on = activeFilter === chip.id;
+              return (
+                <button key={chip.id} onClick={() => setFilter(chip.id)} style={{
+                  flex: '0 0 auto', padding: '7px 12px', borderRadius: 999,
+                  border: `1px solid ${on ? c.ink : c.hairline}`,
+                  background: on ? c.ink : c.surface, color: on ? c.bg : c.ink2,
+                  fontFamily: FONTS.ui, fontSize: 12, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
+                }}>{chip.name} <span style={{ opacity: 0.6 }}>{chip.n}</span></button>
+              );
+            })}
+          </div>
+        )}
+
+        {loading ? null : visible.length === 0 ? (
           <div style={{ background: c.surface, border: `1px solid ${c.hairline}`, borderRadius: 3 }}>
             <Empty c={c} title={T.extraPageEmpty} hint={T.extraPageEmptyHint} />
           </div>
         ) : (
-          items.map((it, idx) => (
+          visible.map((it, idx) => (
             <ExtraPageRow
               key={it.id}
               c={c} item={it}
               settings={settings}
+              categories={categories}
+              categoryId={catOf(it)}
+              onCategory={(catId) => setCategory(it.id, catId)}
               busy={busy}
               saveStatus={saveState[it.id]}
               canUp={idx > 0}
-              canDown={idx < items.length - 1}
+              canDown={idx < visible.length - 1}
               onChange={(field, value) => updateField(it.id, field, value)}
               onUp={() => move(idx, -1)}
               onDown={() => move(idx, +1)}
@@ -241,7 +294,7 @@ function ExtraPageScreen({ c, state, onBack, onSessionExpired }) {
   );
 }
 
-function ExtraPageRow({ c, item, settings, busy, saveStatus, canUp, canDown, onChange, onUp, onDown, onDelete }) {
+function ExtraPageRow({ c, item, settings, categories, categoryId, onCategory, busy, saveStatus, canUp, canDown, onChange, onUp, onDown, onDelete }) {
   const T = window.AG_T;
   const url = window.AG_SYNC.extraPageImageUrl(settings, item.id) + '/thumb';
   return (
@@ -253,6 +306,16 @@ function ExtraPageRow({ c, item, settings, busy, saveStatus, canUp, canDown, onC
         <img src={url} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       </div>
       <div style={{ padding: 14 }}>
+        {categories.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 10, color: c.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>{T.extraPageCategoryLabel}</div>
+            <select value={categoryId || ''} onChange={e => onCategory(e.target.value || null)}
+              style={{ ...inp(c, FONTS.ui, 14), padding: '10px 12px', appearance: 'auto' }}>
+              <option value="">{T.extraPageCategoryNone}</option>
+              {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+            </select>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ fontSize: 10, color: c.muted, letterSpacing: 0.8, textTransform: 'uppercase' }}>{T.extraPageNote}</div>
           <div style={{ fontSize: 11, color: c.muted }}>
